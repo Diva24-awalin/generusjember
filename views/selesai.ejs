@@ -1,0 +1,19 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title><%= ok ? 'Berhasil' : 'Gagal' %> - SIGJ</title>
+<link rel="stylesheet" href="/style.css"></head>
+<body>
+<div class="notif-wrap">
+  <div class="notif <%= ok ? 'notif-ok' : 'notif-err' %>">
+    <img class="notif-logo" src="/logo.png" alt="" onerror="this.style.display='none'">
+    <div class="notif-icon"><%= ok ? '✓' : '!' %></div>
+    <h2><%= ok ? 'Berhasil' : 'Belum Berhasil' %></h2>
+    <p class="notif-pesan"><%= pesan %></p>
+    <% if (ok) { %>
+    <p class="notif-doa">Alhamdulillahi jazakumullahu khoiro</p>
+    <% } else { %>
+    <a class="btn btn-line btn-block" href="javascript:history.back()">← Kembali</a>
+    <% } %>
+  </div>
+</div>
+</body></html>

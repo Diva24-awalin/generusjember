@@ -1,0 +1,51 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Desa &amp; Kelompok - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <a class="back" href="/admin">Kembali</a>
+  <h1>Desa &amp; Kelompok</h1>
+
+  <div class="row" style="flex-wrap:wrap">
+    <form class="card" method="post" action="/admin/desa" style="min-width:280px">
+      <h2>Tambah Desa</h2>
+      <label>Nama Desa</label><input name="nama" required placeholder="Contoh: Desa Tanggul">
+      <p><button>Tambah Desa</button></p>
+    </form>
+
+    <form class="card" method="post" action="/admin/kelompok" style="min-width:280px">
+      <h2>Tambah Kelompok</h2>
+      <label>Pilih Desa</label>
+      <select name="desa_id" required>
+        <option value="">- Pilih Desa -</option>
+        <% desa.forEach(d => { %><option value="<%= d.id %>"><%= d.nama %></option><% }) %>
+      </select>
+      <label>Nama Kelompok (satu nama per baris)</label>
+      <textarea name="nama" rows="4" required placeholder="Kota Bambu&#10;Kelompok B&#10;Kelompok C"></textarea>
+      <p><button>Tambah Kelompok</button></p>
+    </form>
+  </div>
+
+  <% desa.forEach(d => { const ks = kelompok.filter(k => k.desa_id === d.id); %>
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <h2><%= d.nama %> <span class="muted" style="font-size:14px">(<%= ks.length %> kelompok)</span></h2>
+      <% if (!ks.length) { %>
+      <form method="post" action="/admin/desa/<%= d.id %>/hapus" style="text-align:right"
+            onsubmit="return confirm('Hapus desa ini?')">
+        <button class="btn-line" style="padding:8px 14px;font-size:14px">Hapus Desa</button>
+      </form>
+      <% } %>
+    </div>
+    <div class="chips">
+      <% ks.forEach(k => { %>
+      <form class="chip" method="post" action="/admin/kelompok/<%= k.id %>/hapus"
+            onsubmit="return confirm('Hapus kelompok ini?')">
+        <span><%= k.nama %></span><button title="Hapus">×</button>
+      </form>
+      <% }) %>
+      <% if (!ks.length) { %><span class="muted">Belum ada kelompok</span><% } %>
+    </div>
+  </div>
+  <% }) %>
+</div>
+<script src="/konfirmasi.js"></script></body></html>

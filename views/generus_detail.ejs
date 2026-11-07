@@ -1,0 +1,56 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title><%= g.nama %> - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <a class="back" href="/admin/generus">Kembali</a>
+  <h1><%= g.nama %></h1>
+  <p class="muted"><%= g.desa %> · <%= g.kelompok %> · <%= g.jenis_kelamin || '-' %>
+    <% if (g.no_hp) { %> · <a target="_blank" rel="noopener" href="<%= waLink(g.no_hp) %>"><%= g.no_hp %></a><% } %></p>
+
+  <div class="stats">
+    <div class="stat"><b><%= stat.total %></b><span>Total Kegiatan</span></div>
+    <div class="stat"><b><%= stat.hadir %></b><span>Hadir</span></div>
+    <div class="stat"><b><%= stat.telat %></b><span>Terlambat</span></div>
+    <div class="stat"><b><%= stat.izin %></b><span>Izin</span></div>
+    <div class="stat"><b><%= stat.alpa %></b><span>Tidak Hadir</span></div>
+  </div>
+
+  <% const w = n => stat.total ? (n * 100 / stat.total) : 0; %>
+  <div class="card">
+    <div class="spread">
+      <h2>Persentase Kehadiran</h2>
+      <b style="font-size:1.8rem;color:var(--primary)"><%= stat.persen %>%</b>
+    </div>
+    <div class="bar" style="margin-top:8px">
+      <i class="c-hadir" style="width:<%= w(stat.hadir - stat.telat) %>%"></i>
+      <i class="c-telat" style="width:<%= w(stat.telat) %>%"></i>
+      <i class="c-izin" style="width:<%= w(stat.izin) %>%"></i>
+    </div>
+    <div class="legend">
+      <span class="l-hadir">Tepat waktu <%= stat.hadir - stat.telat %></span>
+      <span class="l-telat">Terlambat <%= stat.telat %></span>
+      <span class="l-izin">Izin <%= stat.izin %></span>
+      <span>Tidak hadir <%= stat.alpa %></span>
+    </div>
+  </div>
+
+  <div class="card table-wrap">
+    <h2>Riwayat Kegiatan</h2>
+    <table>
+      <tr><th>Kegiatan</th><th>Tanggal</th><th>Status</th><th>Alasan Izin</th></tr>
+      <% riwayat.forEach(r => { %>
+      <tr>
+        <td><a href="/admin/kegiatan/<%= r.id %>"><%= r.nama %></a></td><td><%= r.tanggal %></td>
+        <td>
+          <% if (r.status === 'Hadir') { %><span class="badge on">Hadir</span>
+            <% if (r.terlambat) { %><span class="badge late">Terlambat</span><% } %>
+          <% } else if (r.status === 'Izin') { %><span class="badge izin">Izin</span>
+          <% } else { %><span class="badge belum">Tidak hadir</span><% } %>
+        </td>
+        <td style="white-space:normal"><%= r.alasan || '-' %></td>
+      </tr>
+      <% }) %>
+      <% if (!riwayat.length) { %><tr><td colspan="4" class="muted">Belum ada kegiatan.</td></tr><% } %>
+    </table>
+  </div>
+</div></body></html>

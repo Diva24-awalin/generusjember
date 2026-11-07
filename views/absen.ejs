@@ -1,0 +1,115 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Absensi - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap">
+  <div class="brand">
+    <img class="brand-logo" src="/logo.png" alt="" onerror="this.style.display='none'">
+    <div><h1><%= k.nama %></h1><p class="muted">Absensi · <%= k.tanggal %></p></div>
+  </div>
+  <% if (k.batas_telat) { %>
+  <p class="muted" style="font-size:13px">⏰ Hadir setelah <%= k.batas_telat.replace('T', ' ') %> WIB dicatat <b>Terlambat</b>.</p>
+  <% } %>
+
+  <div class="tabs">
+    <button type="button" class="pilih on" id="tabLama" style="flex:1">Sudah Terdaftar</button>
+    <button type="button" class="pilih" id="tabBaru" style="flex:1">Daftar Sensus Baru</button>
+  </div>
+
+  <form method="post" id="f">
+    <input type="hidden" name="mode" id="mode" value="lama">
+    <input type="hidden" name="status" id="status">
+
+    <div id="boxLama">
+      <label>Cari nama kamu</label>
+      <input id="cari" placeholder="Ketik minimal 2 huruf" autocomplete="off">
+      <input type="hidden" name="generus_id" id="gid">
+      <div class="hasil" id="hasil"></div>
+    </div>
+
+    <div id="boxBaru" hidden>
+      <h2>Daftar Sensus Baru</h2>
+      <p class="muted">Isi data singkat untuk melanjutkan absensi.</p>
+      <label>Nama Lengkap</label><input name="nama" id="nama">
+      <label>Desa</label>
+      <select id="desa"><option value="">- Pilih Desa -</option>
+        <% desa.forEach(d => { %><option value="<%= d.id %>"><%= d.nama %></option><% }) %>
+      </select>
+      <label>Kelompok</label>
+      <select name="kelompok_id" id="kelompok"><option value="">- Pilih Desa dulu -</option></select>
+      <label>Tanggal Lahir</label><input type="date" name="tgl_lahir">
+      <label>No. HP</label><input type="tel" name="no_hp" placeholder="08xxxxxxxxxx">
+      <label>Jenis Kelamin</label>
+      <select name="jenis_kelamin"><option>Laki-laki</option><option>Perempuan</option></select>
+    </div>
+
+    <label>Status Kehadiran</label>
+    <div class="row">
+      <button type="button" class="pilih" data-s="Hadir">Hadir</button>
+      <button type="button" class="pilih" data-s="Izin">Izin</button>
+    </div>
+
+    <div id="boxAlasan" hidden>
+      <label>Alasan Izin</label>
+      <input name="alasan" id="alasan" maxlength="200" placeholder="Contoh: sakit, kerja, ada keperluan keluarga">
+    </div>
+
+    <p><button style="width:100%" id="kirim" disabled>Kirim Absensi</button></p>
+  </form>
+</div>
+
+<script>
+const kelompok = <%- JSON.stringify(kelompok).replace(/</g, '\\u003c') %>;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function setMode(m){
+  $('mode').value = m;
+  $('boxLama').hidden = m !== 'lama';
+  $('boxBaru').hidden = m !== 'baru';
+  $('tabLama').classList.toggle('on', m === 'lama');
+  $('tabBaru').classList.toggle('on', m === 'baru');
+  cek();
+}
+$('tabLama').onclick = () => setMode('lama');
+$('tabBaru').onclick = () => setMode('baru');
+
+$('desa').onchange = (e) => {
+  const list = kelompok.filter(k => k.desa_id == e.target.value);
+  $('kelompok').innerHTML = '<option value="">- Pilih Kelompok -</option>' +
+    list.map(k => `<option value="${k.id}">${esc(k.nama)}</option>`).join('');
+  cek();
+};
+
+let t;
+$('cari').oninput = (e) => {
+  clearTimeout(t); $('gid').value = ''; cek();
+  t = setTimeout(async () => {
+    const r = await fetch('/api/cari?q=' + encodeURIComponent(e.target.value));
+    const rows = await r.json();
+    $('hasil').innerHTML = rows.map(g =>
+      `<div data-id="${g.id}"><b>${esc(g.nama)}</b><br><small class="muted">${esc(g.desa)} · ${esc(g.kelompok)}</small></div>`
+    ).join('') || '<p class="muted">Tidak ditemukan. Silakan daftar di tab Sensus Baru.</p>';
+  }, 300);
+};
+$('hasil').onclick = (e) => {
+  const d = e.target.closest('[data-id]'); if (!d) return;
+  document.querySelectorAll('.hasil div').forEach(x => x.classList.remove('on'));
+  d.classList.add('on'); $('gid').value = d.dataset.id; cek();
+};
+
+document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-s]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); $('status').value = b.dataset.s;
+  $('boxAlasan').hidden = b.dataset.s !== 'Izin';
+  cek();
+});
+
+function cek(){
+  let ok = !!$('status').value;
+  if ($('mode').value === 'lama') ok = ok && !!$('gid').value;
+  else ok = ok && !!$('nama').value.trim() && !!$('kelompok').value;
+  if ($('status').value === 'Izin') ok = ok && !!$('alasan').value.trim();
+  $('kirim').disabled = !ok;
+}
+document.querySelectorAll('#boxBaru input,#boxBaru select,#alasan').forEach(i => i.oninput = cek);
+</script></body></html>

@@ -1,0 +1,33 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Edit Kegiatan - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap">
+  <a class="back" href="/admin/kegiatan/<%= k.id %>">Kembali</a>
+  <h1>Edit Kegiatan</h1>
+
+  <form class="card" method="post" action="/admin/kegiatan/<%= k.id %>/edit">
+    <label>Nama Kegiatan</label>
+    <input name="nama" value="<%= k.nama %>" required>
+    <label>Tanggal</label>
+    <input type="date" name="tanggal" value="<%= k.tanggal %>" required>
+
+    <h2 style="margin-top:22px">Jadwal otomatis (opsional)</h2>
+    <label>Dibuka otomatis pada (WIB)</label>
+    <input type="datetime-local" name="jam_buka" value="<%= k.jam_buka || '' %>">
+    <label>Ditutup otomatis pada (WIB)</label>
+    <input type="datetime-local" name="jam_tutup" value="<%= k.jam_tutup || '' %>">
+    <label>Batas tepat waktu (setelah ini Terlambat)</label>
+    <input type="datetime-local" name="batas_telat" value="<%= k.batas_telat || '' %>">
+    <p class="muted" style="font-size:13px">Kosongkan kalau tidak dipakai.</p>
+
+    <p><button class="btn-block">Simpan Perubahan</button></p>
+  </form>
+
+  <form class="card" method="post" action="/admin/kegiatan/<%= k.id %>/hapus"
+        onsubmit="return confirm('Hapus kegiatan ini beserta SEMUA catatan absensinya? Tindakan ini tidak bisa dibatalkan.')">
+    <h2>Hapus Kegiatan</h2>
+    <p class="muted">Kegiatan dan seluruh catatan kehadirannya akan dihapus permanen. Data generus tidak ikut terhapus.</p>
+    <p><button class="btn-danger btn-block">Hapus Kegiatan Ini</button></p>
+  </form>
+</div>
+<script src="/konfirmasi.js"></script></body></html>

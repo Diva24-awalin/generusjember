@@ -1,0 +1,15 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Masuk - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap center">
+  <img class="logo-img" src="/logo.png" alt="Generus Jember" onerror="this.style.display='none'">
+  <form class="card" method="post" action="/admin/login" style="width:100%">
+    <h2>Masuk Portal Admin</h2>
+    <p class="muted">Sistem Informasi Generus Jember Kota</p>
+    <% if (error) { %><p class="err"><%= error %></p><% } %>
+    <label>Email</label><input type="email" name="email" required>
+    <label>Password</label><input type="password" name="password" required>
+    <p><button class="btn-block">Masuk</button></p>
+  </form>
+  <a class="back" href="/" style="margin-top:6px">Beranda</a>
+</div></body></html>

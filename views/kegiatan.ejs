@@ -1,0 +1,184 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title><%= k.nama %> - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <a class="back no-print" href="/admin">Kembali</a>
+  <h1><%= k.nama %></h1>
+  <p class="muted"><%= k.tanggal %> ·
+    <span class="badge <%= s.buka ? 'on' : 'off' %>">Absensi <%= s.label %></span></p>
+      <p class="no-print actions">
+    <a class="btn btn-line btn-sm" href="/admin/kegiatan/<%= k.id %>/edit">✎ Edit Kegiatan</a>
+    <form class="inline no-print" method="post" action="/admin/kegiatan/<%= k.id %>/hapus"
+          onsubmit="return confirm('Hapus kegiatan ini beserta SEMUA catatan absensinya? Tindakan ini tidak bisa dibatalkan.')">
+      <button class="btn-danger btn-sm">🗑 Hapus</button>
+    </form>
+  </p>
+
+  <% const w = n => stat.total ? (n * 100 / stat.total) : 0; %>
+
+  <div class="stats">
+    <div class="stat"><b><%= stat.total %></b><span>Terdaftar</span></div>
+    <div class="stat"><b><%= stat.hadir %></b><span>Hadir</span></div>
+    <div class="stat"><b><%= stat.telat %></b><span>Terlambat</span></div>
+    <div class="stat"><b><%= stat.izin %></b><span>Izin</span></div>
+    <div class="stat"><b><%= stat.belum %></b><span>Belum Hadir</span></div>
+  </div>
+
+  <div class="card">
+    <div class="spread">
+      <h2>Persentase Kehadiran</h2>
+      <b style="font-size:1.8rem;color:var(--primary)"><%= stat.persen %>%</b>
+    </div>
+    <div class="bar" style="margin-top:8px">
+      <i class="c-hadir" style="width:<%= w(stat.hadir - stat.telat) %>%"></i>
+      <i class="c-telat" style="width:<%= w(stat.telat) %>%"></i>
+      <i class="c-izin" style="width:<%= w(stat.izin) %>%"></i>
+    </div>
+    <div class="legend">
+      <span class="l-hadir">Tepat waktu <%= stat.hadir - stat.telat %></span>
+      <span class="l-telat">Terlambat <%= stat.telat %></span>
+      <span class="l-izin">Izin <%= stat.izin %></span>
+      <span>Belum <%= stat.belum %></span>
+    </div>
+
+    <h2 style="margin-top:26px">Per Desa</h2>
+    <% perDesa.forEach(d => {
+         const pH = d.total ? Math.round(d.hadir * 100 / d.total) : 0; %>
+    <div style="margin:14px 0">
+      <div class="spread" style="font-size:14px">
+        <b><%= d.desa %></b>
+        <span class="muted">Hadir <%= d.hadir %> · Izin <%= d.izin %> · dari <%= d.total %> (<%= pH %>%)</span>
+      </div>
+      <div class="bar" style="margin-top:6px">
+        <i class="c-hadir" style="width:<%= d.total ? d.hadir * 100 / d.total : 0 %>%"></i>
+        <i class="c-izin" style="width:<%= d.total ? d.izin * 100 / d.total : 0 %>%"></i>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+
+  <!-- Per kelompok -->
+  <div class="card table-wrap">
+    <h2>Per Kelompok</h2>
+    <table>
+      <tr><th>Desa</th><th>Kelompok</th><th>Hadir</th><th>Izin</th><th>Terdaftar</th><th>%</th></tr>
+      <% perKelompok.forEach(x => {
+           const p = x.total ? Math.round(x.hadir * 100 / x.total) : 0; %>
+      <tr>
+        <td><%= x.desa %></td><td><%= x.kelompok %></td>
+        <td><%= x.hadir %></td><td><%= x.izin %></td><td><%= x.total %></td>
+        <td><span class="pct <%= p >= 75 ? 'hi' : (p >= 50 ? 'mid' : 'lo') %>"><%= p %>%</span></td>
+      </tr>
+      <% }) %>
+      <% if (!perKelompok.length) { %><tr><td colspan="6" class="muted">Belum ada kelompok.</td></tr><% } %>
+    </table>
+  </div>
+
+  <div class="card" style="text-align:center;max-width:460px;margin-left:auto;margin-right:auto">
+    <h2>QR Absensi</h2>
+    <img class="qr" src="<%= qr %>" alt="QR" width="300">
+    <p class="muted" style="word-break:break-all;font-size:13px"><%= link %></p>
+    <div class="row stack no-print">
+      <form method="post" action="/admin/kegiatan/<%= k.id %>/ganti-qr"
+            onsubmit="return confirm('QR lama tidak akan berlaku lagi. Lanjut?')">
+        <button class="btn-line btn-block">Ganti QR</button>
+      </form>
+      <form method="post" action="/admin/kegiatan/<%= k.id %>/toggle">
+        <button class="btn-block"><%= k.aktif ? 'Tutup Absensi' : 'Buka Absensi' %></button>
+      </form>
+    </div>
+    <p class="no-print"><button onclick="window.print()" class="btn-line btn-block">Cetak QR</button></p>
+  </div>
+
+  <details class="card no-print" style="max-width:460px;margin-left:auto;margin-right:auto">
+    <summary>Jadwal otomatis &amp; batas terlambat</summary>
+    <form method="post" action="/admin/kegiatan/<%= k.id %>/jadwal">
+      <label>Dibuka otomatis pada (WIB)</label>
+      <input type="datetime-local" name="jam_buka" value="<%= k.jam_buka || '' %>">
+      <label>Ditutup otomatis pada (WIB)</label>
+      <input type="datetime-local" name="jam_tutup" value="<%= k.jam_tutup || '' %>">
+      <label>Batas tepat waktu (setelah ini Terlambat)</label>
+      <input type="datetime-local" name="batas_telat" value="<%= k.batas_telat || '' %>">
+      <p class="muted" style="font-size:13px">Kosongkan kalau tidak dipakai. Tombol Tutup/Buka Absensi manual tetap berlaku.</p>
+      <p><button class="btn-block">Simpan Jadwal</button></p>
+    </form>
+  </details>
+
+  <!-- Sudah absen -->
+  <div class="card table-wrap">
+    <div class="spread">
+      <h2>Sudah Absen (<%= rekap.length %>)</h2>
+      <a class="btn btn-sm no-print" href="/admin/kegiatan/<%= k.id %>/export">⬇ Export Excel</a>
+    </div>
+    <table>
+      <tr><th>Nama</th><th>Desa</th><th>Kelompok</th><th>JK</th><th>Status</th><th>Alasan Izin</th><th>Waktu (WIB)</th><th class="no-print"></th></tr>
+      <% rekap.forEach(r => { %>
+      <tr>
+        <td><%= r.nama %></td><td><%= r.desa %></td><td><%= r.kelompok %></td><td><%= r.jenis_kelamin %></td>
+        <td>
+          <% if (r.status === 'Hadir') { %>
+            <span class="badge on">Hadir</span>
+            <% if (r.terlambat) { %><span class="badge late">Terlambat</span><% } %>
+          <% } else { %><span class="badge izin">Izin</span><% } %>
+          <% if (r.oleh === 'admin') { %><span class="badge belum">Pengurus</span><% } %>
+        </td>
+        <td style="white-space:normal;min-width:140px"><%= r.alasan || '-' %></td>
+        <td><%= r.waktu %></td>
+        <td class="no-print">
+          <form class="inline" method="post" action="/admin/kegiatan/<%= k.id %>/batal/<%= r.gid %>"
+                onsubmit="return confirm('Batalkan catatan absen ini?')">
+            <button class="btn-danger btn-sm">Batalkan</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+    </table>
+  </div>
+
+  <!-- Belum hadir -->
+  <div class="card table-wrap no-print" id="belum">
+    <div class="spread">
+      <h2>Belum Hadir (<%= belumList.length %>)</h2>
+      <input id="fb" placeholder="Cari nama / desa / kelompok..." style="max-width:280px">
+    </div>
+    <table id="tb">
+      <tr><th>Nama</th><th>Desa</th><th>Kelompok</th><th>Tandai (Pengurus)</th><th>Hubungi</th></tr>
+      <% belumList.forEach(b => {
+           const wa = waLink(b.no_hp, 'Assalamualaikum ' + b.nama + ', ada kegiatan "' + k.nama + '". Ditunggu kehadirannya ya.'); %>
+      <tr>
+        <td><%= b.nama %></td><td><%= b.desa %></td><td><%= b.kelompok %></td>
+        <td>
+          <div class="actions">
+            <form class="inline" method="post" action="/admin/kegiatan/<%= k.id %>/tandai">
+              <input type="hidden" name="generus_id" value="<%= b.id %>">
+              <input type="hidden" name="status" value="Hadir">
+              <button class="btn-sm">Hadir</button>
+            </form>
+            <form class="inline" method="post" action="/admin/kegiatan/<%= k.id %>/tandai"
+                  onsubmit="var a = prompt('Alasan izin:'); if (!a) return false; this.alasan.value = a; return true;">
+              <input type="hidden" name="generus_id" value="<%= b.id %>">
+              <input type="hidden" name="status" value="Izin">
+              <input type="hidden" name="alasan" value="">
+              <button class="btn-line btn-sm">Izin</button>
+            </form>
+          </div>
+        </td>
+        <td><% if (wa) { %><a class="btn btn-sm" target="_blank" rel="noopener" href="<%= wa %>">WhatsApp</a>
+            <% } else { %><span class="muted">-</span><% } %></td>
+      </tr>
+      <% }) %>
+    </table>
+  </div>
+</div>
+
+<script>
+document.getElementById('fb').oninput = function () {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#tb tr').forEach((tr, i) => {
+    if (i === 0) return;
+    tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none';
+  });
+};
+</script>
+<script src="/konfirmasi.js"></script>
+</body></html>

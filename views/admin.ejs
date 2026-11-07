@@ -1,0 +1,64 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+
+  <div class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="/logo.png" alt="" onerror="this.style.display='none'">
+      <div><h1>Dashboard SIGJ</h1><p class="muted"><%= admin.email %></p></div>
+    </div>
+    <a class="btn btn-line" href="/admin/logout" style="padding:9px 16px;font-size:14px">Keluar</a>
+  </div>
+
+  <div class="stats s3">
+    <div class="stat"><b><%= totalGenerus %></b><span>Total Generus</span></div>
+    <div class="stat"><b><%= kegiatan.length %></b><span>Kegiatan</span></div>
+    <div class="stat"><b><%= kegiatan.filter(k => k.buka).length %></b><span>Absensi Dibuka</span></div>
+  </div>
+
+  <p style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="btn" href="/admin/generus">Daftar Generus</a>
+    <a class="btn btn-line" href="/admin/wilayah">Kelola Desa &amp; Kelompok</a>
+    <a class="btn btn-line" href="/admin/password">Ganti Password / Admin</a>
+    <a class="btn btn-line" href="/admin/backup">⬇ Download Backup</a>
+  </p>
+
+  <form class="card" method="post" action="/admin/kegiatan">
+    <h2>Buat Kegiatan Baru</h2>
+    <label>Nama Kegiatan</label><input name="nama" required placeholder="Contoh: Pengajian Muda-Mudi">
+    <label>Tanggal</label><input type="date" name="tanggal" required>
+    <details style="margin-top:14px">
+      <summary>Atur jadwal otomatis (opsional)</summary>
+      <label>Absensi dibuka otomatis pada</label><input type="datetime-local" name="jam_buka">
+      <label>Absensi ditutup otomatis pada</label><input type="datetime-local" name="jam_tutup">
+      <label>Batas tepat waktu (setelah ini dianggap Terlambat)</label><input type="datetime-local" name="batas_telat">
+      <p class="muted" style="font-size:13px">Jam memakai WIB. Boleh dikosongkan.</p>
+    </details>
+    <p><button>Buat &amp; Buat QR</button></p>
+  </form>
+
+  <div class="card table-wrap">
+    <h2>Daftar Kegiatan</h2>
+    <table>
+      <tr><th>Kegiatan</th><th>Tanggal</th><th>Absen</th><th>Status</th><th></th></tr>
+      <% kegiatan.forEach(k => { %>
+      <tr>
+        <td><%= k.nama %></td><td><%= k.tanggal %></td><td><%= k.jumlah %></td>
+        <td><span class="badge <%= k.buka ? 'on' : 'off' %>"><%= k.label %></span></td>
+                <td>
+          <div class="actions">
+            <a class="btn btn-sm" href="/admin/kegiatan/<%= k.id %>">Buka</a>
+            <a class="btn btn-line btn-sm" href="/admin/kegiatan/<%= k.id %>/edit">Edit</a>
+            <form class="inline" method="post" action="/admin/kegiatan/<%= k.id %>/hapus"
+                  onsubmit="return confirm('Hapus kegiatan ini beserta SEMUA catatan absensinya?')">
+              <button class="btn-danger btn-sm">Hapus</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      <% }) %>
+    </table>
+  </div>
+</div>
+<script src="/konfirmasi.js"></script></body></html>

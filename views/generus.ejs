@@ -1,0 +1,46 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daftar Generus - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <a class="back" href="/admin">Kembali</a>
+  <h1>Daftar Generus <span class="muted" style="font-size:1rem">(<%= rows.length %>)</span></h1>
+
+  <form class="card search" method="get" action="/admin/generus">
+    <input name="q" value="<%= q %>" placeholder="Cari nama...">
+    <select name="desa_id">
+      <option value="">Semua Desa</option>
+      <% desa.forEach(d => { %><option value="<%= d.id %>" <%= desaId === d.id ? 'selected' : '' %>><%= d.nama %></option><% }) %>
+    </select>
+    <button>Cari</button>
+  </form>
+
+  <div class="card table-wrap">
+    <table>
+      <tr><th>Nama</th><th>Desa</th><th>Kelompok</th><th>JK</th><th>No. HP</th>
+          <th>Hadir</th><th>Izin</th><th>%</th><th></th></tr>
+      <% rows.forEach(g => {
+           const p = g.total ? Math.round(g.hadir * 100 / g.total) : 0;
+           const wa = waLink(g.no_hp); %>
+      <tr>
+        <td><a href="/admin/generus/<%= g.id %>"><b><%= g.nama %></b></a></td>
+        <td><%= g.desa %></td><td><%= g.kelompok %></td><td><%= g.jenis_kelamin %></td>
+        <td><% if (wa) { %><a target="_blank" rel="noopener" href="<%= wa %>"><%= g.no_hp %></a><% } else { %>-<% } %></td>
+        <td><%= g.hadir %>/<%= g.total %></td><td><%= g.izin %></td>
+        <td><span class="pct <%= p >= 75 ? 'hi' : (p >= 50 ? 'mid' : 'lo') %>"><%= p %>%</span></td>
+        <td>
+          <div class="actions">
+            <a class="btn btn-line btn-sm" href="/admin/generus/<%= g.id %>/edit">Edit</a>
+            <form class="inline" method="post" action="/admin/generus/<%= g.id %>/hapus"
+                  onsubmit="return confirm('Hapus <%= g.nama.replace(/[\'\"\\]/g, '') %> beserta riwayat absennya?')">
+              <button class="btn-danger btn-sm">Hapus</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      <% }) %>
+      <% if (!rows.length) { %><tr><td colspan="9" class="muted">Belum ada data.</td></tr><% } %>
+    </table>
+  </div>
+</div>
+<script src="/konfirmasi.js"></script>
+</body></html>

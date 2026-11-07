@@ -1,0 +1,38 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Edit Generus - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap">
+  <a class="back" href="/admin/generus">Kembali</a>
+  <h1>Edit Data Generus</h1>
+
+  <form class="card" method="post" action="/admin/generus/<%= g.id %>/edit">
+    <label>Nama Lengkap</label><input name="nama" value="<%= g.nama %>" required>
+    <label>Desa</label>
+    <select id="desa">
+      <% desa.forEach(d => { %><option value="<%= d.id %>" <%= d.id === g.desa_id ? 'selected' : '' %>><%= d.nama %></option><% }) %>
+    </select>
+    <label>Kelompok</label>
+    <select name="kelompok_id" id="kelompok" required></select>
+    <label>Tanggal Lahir</label><input type="date" name="tgl_lahir" value="<%= g.tgl_lahir || '' %>">
+    <label>No. HP</label><input type="tel" name="no_hp" value="<%= g.no_hp || '' %>">
+    <label>Jenis Kelamin</label>
+    <select name="jenis_kelamin">
+      <option <%= g.jenis_kelamin === 'Laki-laki' ? 'selected' : '' %>>Laki-laki</option>
+      <option <%= g.jenis_kelamin === 'Perempuan' ? 'selected' : '' %>>Perempuan</option>
+    </select>
+    <p><button class="btn-block">Simpan Perubahan</button></p>
+  </form>
+</div>
+
+<script>
+const kelompok = <%- JSON.stringify(kelompok).replace(/</g, '\\u003c') %>;
+const sekarang = <%= g.kelompok_id %>;
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function isi() {
+  const d = document.getElementById('desa').value;
+  document.getElementById('kelompok').innerHTML = kelompok.filter(k => k.desa_id == d)
+    .map(k => `<option value="${k.id}" ${k.id === sekarang ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
+}
+document.getElementById('desa').onchange = isi;
+isi();
+</script></body></html>
