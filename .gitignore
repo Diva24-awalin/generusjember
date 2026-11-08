@@ -1,0 +1,17 @@
+# Rahasia dan konfigurasi lokal
+.env
+
+# Database lokal
+*.db
+
+# Dependensi
+node_modules/
+
+# File backup
+server-backup.js
+
+# Script migrasi dan pengujian lokal
+cek-data.js
+migrasi-data.js
+test-koneksi.js
+seed.js

@@ -2,22 +2,24 @@
   "name": "sigj",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "start": "node server.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^13.0.3",
+    "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
+    "dotenv": "^18.0.9",
     "ejs": "^7.0.2",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.3",
     "express-session": "^1.19.0",
+    "pg": "^8.23.1",
     "qrcode": "^1.5.4"
   }
 }
