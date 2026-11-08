@@ -1,0 +1,90 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daftar Mumi - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <p class="muted" style="margin:0 0 4px">Data muda-mudi sesuai wilayah. Umur dihitung otomatis dari tanggal lahir.</p>
+
+  <% const dN = (desa.find(d => d.id === desaId) || {}).nama;
+     const kN = (kelompok.find(k => k.id === kelompokId) || {}).nama; %>
+  <div class="crumb">Semua Daerah
+    <% if (dN) { %> › <b><%= dN %></b><% } %>
+    <% if (kN) { %> › <b><%= kN %></b><% } %></div>
+
+  <form method="get" action="/admin/generus">
+    <div class="mtools">
+      <div class="searchbar"><span class="si"><%- ic('search', 18) %></span>
+        <input name="q" value="<%= q %>" placeholder="Cari nama / no. HP..."></div>
+      <button type="button" class="btn btn-line btn-sm" id="btnFilter"><%- ic('sliders', 16) %> Filter</button>
+    </div>
+
+    <div class="card" id="filterBox" <%= (desaId || kelompokId || jk) ? '' : 'hidden' %>>
+      <label style="margin-top:0">Desa</label>
+      <select name="desa_id" id="fDesa">
+        <option value="0">Semua Desa</option>
+        <% desa.forEach(d => { %><option value="<%= d.id %>" <%= d.id === desaId ? 'selected' : '' %>><%= d.nama %></option><% }) %>
+      </select>
+      <label>Kelompok</label>
+      <select name="kelompok_id" id="fKel"></select>
+      <label>Jenis Kelamin</label>
+      <select name="jk">
+        <option value="">Semua</option>
+        <option <%= jk === 'Laki-laki' ? 'selected' : '' %>>Laki-laki</option>
+        <option <%= jk === 'Perempuan' ? 'selected' : '' %>>Perempuan</option>
+      </select>
+      <div class="row" style="margin-top:14px">
+        <button>Terapkan</button>
+        <a class="btn btn-line" href="/admin/generus">Reset</a>
+      </div>
+    </div>
+  </form>
+
+  <div class="spread" style="margin-bottom:12px">
+    <b><%= rows.length %> muda-mudi</b>
+    <div class="actions">
+      <a class="btn btn-line btn-sm" href="/admin/generus/export"><%- ic('download', 16) %> Export</a>
+      <a class="btn btn-sm" href="/admin/generus/baru"><%- ic('plus', 16) %> Tambah</a>
+    </div>
+  </div>
+
+  <% rows.forEach(g => {
+       const ini = g.nama.trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase(); %>
+  <div class="mrow">
+    <a class="mrow-main" href="/admin/generus/<%= g.id %>">
+      <span class="avatar-sm"><%= ini %></span>
+      <span class="mrow-info">
+        <b><%= g.nama %></b>
+        <span class="tags">
+          <span class="tag <%= g.jenis_kelamin === 'Perempuan' ? 'p' : 'l' %>"><%= g.jenis_kelamin === 'Perempuan' ? '♀ Perempuan' : '♂ Laki-laki' %></span>
+          <% if (g.umur !== null && g.umur !== undefined) { %><span class="tag"><%= g.umur %> th</span><% } %>
+        </span>
+        <small class="muted"><%- ic('pin', 12) %> <%= g.desa %> · <%= g.kelompok %></small>
+      </span>
+    </a>
+    <div class="mrow-act">
+      <a class="btn btn-line btn-sm" href="/admin/generus/<%= g.id %>/edit">Edit</a>
+      <form method="post" action="/admin/generus/<%= g.id %>/hapus"
+            onsubmit="return confirm('Hapus muda-mudi ini beserta riwayat absennya?')">
+        <button class="btn-danger btn-sm" style="width:100%">Hapus</button>
+      </form>
+    </div>
+  </div>
+  <% }) %>
+  <% if (!rows.length) { %><div class="card muted">Tidak ada data yang cocok.</div><% } %>
+</div>
+
+<script>
+const kelompok = <%- JSON.stringify(kelompok).replace(/</g, '\\u003c') %>;
+const pilihKel = <%= kelompokId %>;
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function isiKel() {
+  const d = Number(document.getElementById('fDesa').value);
+  const list = d ? kelompok.filter(k => k.desa_id === d) : kelompok;
+  document.getElementById('fKel').innerHTML = '<option value="0">Semua Kelompok</option>' +
+    list.map(k => `<option value="${k.id}" ${k.id === pilihKel ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
+}
+document.getElementById('fDesa').onchange = () => { isiKel(); };
+document.getElementById('btnFilter').onclick = () => {
+  const b = document.getElementById('filterBox'); b.hidden = !b.hidden;
+};
+isiKel();
+</script></body></html>

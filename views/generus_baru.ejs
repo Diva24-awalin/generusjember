@@ -1,0 +1,48 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tambah Mumi - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap">
+  <a class="back" href="<%= k ? '/admin/kegiatan/' + k.id : '/admin/generus' %>">Kembali</a>
+  <h1>Tambah Muda-mudi</h1>
+  <% if (k) { %><p class="muted">Untuk kegiatan: <b><%= k.nama %></b></p><% } %>
+
+  <form class="card" method="post" action="/admin/generus/baru">
+    <label>Nama Lengkap</label><input name="nama" required>
+    <label>Desa</label>
+    <select id="desa" required>
+      <option value="">- Pilih Desa -</option>
+      <% desa.forEach(d => { %><option value="<%= d.id %>"><%= d.nama %></option><% }) %>
+    </select>
+    <label>Kelompok</label>
+    <select name="kelompok_id" id="kelompok" required><option value="">- Pilih Desa dulu -</option></select>
+    <label>Tanggal Lahir</label><input type="date" name="tgl_lahir">
+    <label>No. HP</label><input type="tel" name="no_hp" placeholder="08xxxxxxxxxx">
+    <label>Jenis Kelamin</label>
+    <select name="jenis_kelamin"><option>Laki-laki</option><option>Perempuan</option></select>
+
+    <% if (k) { %>
+    <input type="hidden" name="kegiatan_id" value="<%= k.id %>">
+    <label>Langsung absenkan di kegiatan ini?</label>
+    <select name="status" id="status">
+      <option value="Hadir">Ya, Hadir</option>
+      <option value="Izin">Ya, Izin</option>
+      <option value="">Tidak, hanya simpan data</option>
+    </select>
+    <div id="boxAlasan" hidden>
+      <label>Alasan Izin</label><input name="alasan" maxlength="200" placeholder="Contoh: sakit, kerja">
+    </div>
+    <% } %>
+    <p><button class="btn-block">Simpan</button></p>
+  </form>
+</div>
+<script>
+const kelompok = <%- JSON.stringify(kelompok).replace(/</g, '\\u003c') %>;
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+document.getElementById('desa').onchange = (e) => {
+  const list = kelompok.filter(k => k.desa_id == e.target.value);
+  document.getElementById('kelompok').innerHTML = '<option value="">- Pilih Kelompok -</option>' +
+    list.map(k => `<option value="${k.id}">${esc(k.nama)}</option>`).join('');
+};
+const st = document.getElementById('status');
+if (st) st.onchange = () => { document.getElementById('boxAlasan').hidden = st.value !== 'Izin'; };
+</script></body></html>

@@ -1,0 +1,38 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kegiatan - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+
+  <form class="card" method="post" action="/admin/kegiatan">
+    <h2>Buat Kegiatan Baru</h2>
+    <label>Nama Kegiatan</label><input name="nama" required placeholder="Contoh: Pengajian Muda-Mudi">
+    <label>Tanggal</label><input type="date" name="tanggal" required>
+    <details style="margin-top:14px">
+      <summary>Atur jadwal otomatis (opsional)</summary>
+      <label>Absensi dibuka otomatis pada</label><input type="datetime-local" name="jam_buka">
+      <label>Absensi ditutup otomatis pada</label><input type="datetime-local" name="jam_tutup">
+      <label>Batas tepat waktu (setelah ini dianggap Terlambat)</label><input type="datetime-local" name="batas_telat">
+      <p class="muted" style="font-size:13px">Jam memakai WIB. Boleh dikosongkan.</p>
+    </details>
+    <p><button>Buat &amp; Buat QR</button></p>
+  </form>
+
+  <h2 style="margin:18px 0 10px">Daftar Kegiatan (<%= list.length %>)</h2>
+  <% if (!list.length) { %><div class="card muted">Belum ada kegiatan.</div><% } %>
+  <% list.forEach(k => { %>
+  <div class="card">
+    <div class="spread">
+      <div><b><%= k.nama %></b><br><small class="muted"><%= tglID(k.tgl) %> · Hadir <%= k.hadir %> · Izin <%= k.izin %></small></div>
+      <span class="badge <%= k.buka ? 'on' : 'off' %>"><%= k.label %></span>
+    </div>
+    <div class="actions" style="margin-top:12px">
+      <a class="btn btn-sm" href="/admin/kegiatan/<%= k.id %>">Buka</a>
+      <a class="btn btn-line btn-sm" href="/admin/kegiatan/<%= k.id %>/edit">Edit</a>
+      <form class="inline" method="post" action="/admin/kegiatan/<%= k.id %>/hapus"
+            onsubmit="return confirm('Hapus kegiatan ini beserta SEMUA catatan absensinya?')">
+        <button class="btn-danger btn-sm">Hapus</button>
+      </form>
+    </div>
+  </div>
+  <% }) %>
+</div></body></html>

@@ -1,0 +1,195 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rekap - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <% const lv = p => p >= 75 ? 'hi' : (p >= 50 ? 'mid' : 'lo'); %>
+
+  <p class="muted" style="margin:0 0 4px;font-size:13px">
+    Persentase kehadiran = hadir ÷ (jumlah muda-mudi × jumlah kegiatan).</p>
+
+  <div class="crumb">Semua Daerah
+    <% if (namaDesa) { %> › <b><%= namaDesa %></b><% } %>
+    <% if (namaKel) { %> › <b><%= namaKel %></b><% } %></div>
+
+  <form method="get" action="/admin/rekap" id="fRekap">
+    <div class="mtools">
+      <button type="button" class="btn btn-line btn-sm" id="btnFilter"><%- ic('sliders', 16) %> Filter</button>
+      <a class="btn btn-line btn-sm" href="/admin/rekap/export?<%= qs %>"><%- ic('download', 16) %> Export CSV</a>
+    </div>
+
+    <div class="card" id="filterBox" hidden>
+      <div class="tabs" style="margin-top:0">
+        <button type="button" class="pilih" data-r="7">7 hari</button>
+        <button type="button" class="pilih" data-r="30">30 hari</button>
+        <button type="button" class="pilih" data-r="90">90 hari</button>
+      </div>
+      <div class="row stack">
+        <div><label style="margin-top:0">Dari</label><input type="date" name="dari" id="fDari" value="<%= f.dari %>"></div>
+        <div><label style="margin-top:0">Sampai</label><input type="date" name="sampai" id="fSampai" value="<%= f.sampai %>"></div>
+      </div>
+      <label>Desa</label>
+      <select name="desa_id" id="fDesa">
+        <option value="0">Semua Desa</option>
+        <% desaList.forEach(d => { %><option value="<%= d.id %>" <%= d.id === f.desaId ? 'selected' : '' %>><%= d.nama %></option><% }) %>
+      </select>
+      <label>Kelompok</label>
+      <select name="kelompok_id" id="fKel"></select>
+      <div class="row" style="margin-top:14px">
+        <button>Terapkan</button>
+        <a class="btn btn-line" href="/admin/rekap">Reset</a>
+      </div>
+    </div>
+
+    <label class="swrow">
+      <span><b>Izin dihitung hadir</b><br><small class="muted">Aktifkan kalau kebijakan menganggap izin sebagai hadir</small></span>
+      <span class="sw"><input type="checkbox" name="izin" value="1" <%= f.izinHadir ? 'checked' : '' %> onchange="this.form.submit()"><i></i></span>
+    </label>
+  </form>
+
+  <!-- Ringkasan -->
+  <div class="card">
+    <div class="spread">
+      <div><span class="big"><%= hadirEf %></span> <span class="muted">/ <%= slots %> hadir</span></div>
+      <b class="pct <%= lv(persen) %>" style="font-size:1.8rem"><%= persen %>%</b>
+    </div>
+    <div class="bar thin"><i class="c-hadir" style="width:<%= persen %>%"></i></div>
+    <small class="muted"><%= tglID(f.dari) %> – <%= tglID(f.sampai) %> · <%= nKeg %> Kegiatan · <%= n %> muda-mudi</small>
+    <div class="sumbox">
+      <div class="sb sb-h"><b><%= sumH %></b>Hadir</div>
+      <div class="sb sb-i"><b><%= sumI %></b>Izin</div>
+      <div class="sb sb-b"><b><%= belum %></b>Belum</div>
+    </div>
+  </div>
+
+  <!-- Tab -->
+  <div class="tabs">
+    <button type="button" class="pilih on" data-t="sesi" style="flex:1">Per Kegiatan</button>
+    <button type="button" class="pilih" data-t="orang" style="flex:1">Per Orang</button>
+    <button type="button" class="pilih" data-t="wil" style="flex:1">Per Wilayah</button>
+  </div>
+
+  <!-- Tren harian -->
+  <div class="card" id="boxTren">
+    <h2>Tren kehadiran harian</h2>
+    <% if (!tren.length) { %><p class="muted">Belum ada kegiatan pada periode ini.</p><% } %>
+    <div class="trend">
+      <% tren.forEach(t => { const d = t.tgl.split('-'); %>
+      <div class="tcol">
+        <small class="tp <%= lv(t.persen) %>"><%= t.persen %>%</small>
+        <div class="ttrack"><div class="tfill f-<%= lv(t.persen) %>" style="height:<%= Math.max(t.persen, 3) %>%"></div></div>
+        <small class="muted"><%= d[2] %>/<%= d[1] %></small>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- Per sesi -->
+  <div class="card" id="pSesi">
+    <h2>Per Kegiatan</h2>
+    <% if (!sesi.length) { %><p class="muted">Belum ada kegiatan pada periode ini.</p><% } %>
+    <% sesi.forEach(k => { const t = tglID(k.tgl).split(' '); %>
+    <a class="kcard" href="/admin/kegiatan/<%= k.id %>">
+      <div class="dblock soft"><b><%= t[0] %></b><span><%= t[1] %></span></div>
+      <div class="kcard-body">
+        <b class="kcard-name"><%= k.nama %></b>
+        <div class="chips2">
+          <span class="chip2 c-h">Hadir <%= k.hadir %></span>
+          <span class="chip2 c-i">Izin <%= k.izin %></span>
+        </div>
+        <div class="bar thin"><i class="c-hadir" style="width:<%= k.persen %>%"></i></div>
+      </div>
+      <b class="pct <%= lv(k.persen) %>"><%= k.persen %>%</b>
+    </a>
+    <% }) %>
+  </div>
+
+  <!-- Per orang -->
+  <div class="card" id="pOrang" hidden>
+    <div class="spread">
+      <h2>Per Orang</h2>
+      <div class="actions">
+        <button type="button" class="pilih btn-sm on" id="urTertib">Paling tertib</button>
+        <button type="button" class="pilih btn-sm" id="urJarang">Jarang hadir</button>
+      </div>
+    </div>
+    <div id="listOrang" style="margin-top:12px">
+      <% orang.forEach(o => {
+           const ini = o.nama.trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase(); %>
+      <a class="mrow" href="/admin/generus/<%= o.id %>" data-p="<%= o.persen %>" data-n="<%= o.nama %>" style="text-decoration:none;color:inherit">
+        <span class="avatar-sm"><%= ini %></span>
+        <span class="mrow-info" style="flex:1">
+          <b><%= o.nama %></b>
+          <small class="muted"><%= o.desa %> · <%= o.kelompok %></small><br>
+          <small class="muted">Hadir <%= o.hadir %> · Izin <%= o.izin %> · Belum <%= o.alpa %></small>
+        </span>
+        <b class="pct <%= lv(o.persen) %>"><%= o.persen %>%</b>
+      </a>
+      <% }) %>
+      <% if (!orang.length) { %><p class="muted">Tidak ada data.</p><% } %>
+    </div>
+  </div>
+
+  <!-- Per wilayah -->
+  <div class="card" id="pWil" hidden>
+    <h2>Per <%= grupKel ? 'Kelompok' : 'Desa' %></h2>
+    <% wilayah.forEach(w => { %>
+    <div style="margin:14px 0">
+      <div class="spread" style="font-size:14px">
+        <b><%= w.label %></b>
+        <span class="pct <%= lv(w.persen) %>"><%= w.persen %>%</span>
+      </div>
+      <div class="bar" style="margin-top:6px"><i class="c-hadir" style="width:<%= w.persen %>%"></i></div>
+      <small class="muted">Hadir <%= w.hadir %> · Izin <%= w.izin %> · <%= w.jumlah %> muda-mudi</small>
+    </div>
+    <% }) %>
+    <% if (!wilayah.length) { %><p class="muted">Tidak ada data.</p><% } %>
+  </div>
+</div>
+
+<script>
+const kelompok = <%- JSON.stringify(kelList).replace(/</g, '\\u003c') %>;
+const pilihKel = <%= f.kelompokId %>;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Filter
+$('btnFilter').onclick = () => { $('filterBox').hidden = !$('filterBox').hidden; };
+function isiKel() {
+  const d = Number($('fDesa').value);
+  const list = d ? kelompok.filter(k => k.desa_id === d) : kelompok;
+  $('fKel').innerHTML = '<option value="0">Semua Kelompok</option>' +
+    list.map(k => `<option value="${k.id}" ${k.id === pilihKel ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
+}
+$('fDesa').onchange = isiKel; isiKel();
+
+// Pilihan cepat rentang tanggal
+document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => {
+  const s = new Date($('fSampai').value + 'T00:00:00Z');
+  s.setUTCDate(s.getUTCDate() - Number(b.dataset.r) + 1);
+  $('fDari').value = s.toISOString().slice(0, 10);
+  $('fRekap').submit();
+});
+
+// Tab
+const panel = { sesi: ['pSesi', 'boxTren'], orang: ['pOrang'], wil: ['pWil'] };
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b));
+  ['pSesi', 'pOrang', 'pWil'].forEach(id => $(id).hidden = true);
+  panel[b.dataset.t].forEach(id => $(id).hidden = false);
+  // tren hanya tampil di tab Per Sesi
+  $('boxTren').hidden = b.dataset.t !== 'sesi';
+});
+
+// Urutan per orang
+function urut(desc) {
+  const box = $('listOrang');
+  [...box.children].filter(e => e.dataset.p !== undefined)
+    .sort((a, b) => (desc ? b.dataset.p - a.dataset.p : a.dataset.p - b.dataset.p) || a.dataset.n.localeCompare(b.dataset.n))
+    .forEach(e => box.appendChild(e));
+  $('urTertib').classList.toggle('on', desc);
+  $('urJarang').classList.toggle('on', !desc);
+}
+$('urTertib').onclick = () => urut(true);
+$('urJarang').onclick = () => urut(false);
+</script>
+</body></html>

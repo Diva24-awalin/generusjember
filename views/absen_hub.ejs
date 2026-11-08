@@ -1,0 +1,32 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Absen - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <p class="muted" style="margin-top:0">Pilih kegiatan untuk membuka QR, memantau kehadiran, atau menandai manual.</p>
+
+  <% const buka = list.filter(k => k.buka), lain = list.filter(k => !k.buka); %>
+  <% [['Sedang dibuka', buka], ['Kegiatan lainnya', lain]].forEach(([judul, arr]) => { %>
+    <h2 style="margin:18px 0 10px"><%= judul %></h2>
+    <% if (!arr.length) { %>
+      <div class="card muted"><%= judul === 'Sedang dibuka' ? 'Tidak ada absensi yang sedang dibuka. Buka lewat menu Kegiatan.' : 'Belum ada kegiatan lain.' %></div>
+    <% } %>
+    <% arr.forEach(k => { %>
+    <div class="card">
+      <div class="spread">
+        <div><b><%= k.nama %></b><br><small class="muted"><%= tglID(k.tgl) %></small></div>
+        <span class="badge <%= k.buka ? 'on' : 'off' %>"><%= k.label %></span>
+      </div>
+      <div class="legend">
+        <span class="l-hadir">Hadir <%= k.hadir %></span>
+        <span class="l-izin">Izin <%= k.izin %></span>
+        <span>Belum <%= Math.max(total - k.hadir - k.izin, 0) %></span>
+      </div>
+      <div class="actions" style="margin-top:12px;flex-wrap:wrap">
+        <a class="btn btn-sm" href="/admin/kegiatan/<%= k.id %>">QR &amp; Kehadiran</a>
+        <a class="btn btn-line btn-sm" href="/admin/kegiatan/<%= k.id %>#belum">Tandai Manual</a>
+        <a class="btn btn-line btn-sm" href="/admin/generus/baru?kegiatan=<%= k.id %>">+ Peserta Baru</a>
+      </div>
+    </div>
+    <% }) %>
+  <% }) %>
+</div></body></html>

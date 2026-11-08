@@ -1,0 +1,103 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beranda - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+
+  <div class="hello">
+    <div>
+      <small>Selamat datang,</small>
+      <h1>Pengurus SIGJ</h1>
+      <p class="muted" style="margin:0"><%= admin.email %> · <%= tanggalHariIni %></p>
+    </div>
+    <img class="brand-logo" src="/logo.png" alt="" onerror="this.style.display='none'">
+  </div>
+
+  <div class="cards2">
+    <a class="mcard hero" href="/admin/generus"><span>Muda-mudi</span><b><%= total %></b><small>Terdaftar</small></a>
+    <a class="mcard" href="/admin/wilayah"><span>Desa</span><b><%= desaN %></b><small>Dalam daerah</small></a>
+    <a class="mcard" href="/admin/wilayah"><span>Kelompok</span><b><%= kelompokN %></b><small>Dalam daerah</small></a>
+    <a class="mcard" href="/admin/rekap"><span>Kehadiran</span><b><%= persen30 %>%</b><small>30 hari terakhir</small></a>
+  </div>
+
+  <div class="quick">
+    <a class="qi-wrap" href="/admin/absen"><span class="qi q-teal"><%- ic('check', 24) %></span>Absen</a>
+    <a class="qi-wrap" href="/admin/generus"><span class="qi q-sky"><%- ic('users', 24) %></span>Mumi</a>
+    <a class="qi-wrap" href="/admin/kegiatan"><span class="qi q-amber"><%- ic('calendar', 24) %></span>Kegiatan</a>
+    <a class="qi-wrap" href="/admin/rekap"><span class="qi q-green"><%- ic('chart', 24) %></span>Rekap</a>
+    <a class="qi-wrap" href="/admin/jurnal"><span class="qi q-violet"><%- ic('book', 24) %></span>Jurnal</a>
+    <a class="qi-wrap" href="/admin/wilayah"><span class="qi q-rose"><%- ic('pin', 24) %></span>Wilayah</a>
+    <a class="qi-wrap" href="/admin/profil"><span class="qi q-slate"><%- ic('user', 24) %></span>Akun</a>
+  </div>
+
+    <!-- Kegiatan hari ini -->
+  <div class="card">
+    <div class="sec-head">
+      <h2>Kegiatan hari ini</h2>
+      <a class="pill-link" href="/admin/absen">Lihat Semua ›</a>
+    </div>
+
+    <% if (!hariIni.length) { %>
+    <div class="empty">
+      <div class="empty-ic"><%- ic('calendar', 30) %></div>
+      <b>Belum ada kegiatan hari ini</b>
+      <p class="muted">Buat kegiatan baru untuk mulai absensi dengan QR.</p>
+      <a class="btn btn-sm" href="/admin/kegiatan"><%- ic('plus', 16) %> Buat Kegiatan</a>
+    </div>
+    <% } %>
+
+    <% hariIni.forEach(k => {
+         const p = total ? Math.min(100, Math.round(k.hadir * 100 / total)) : 0;
+         const t = tglID(k.tgl).split(' '); %>
+    <a class="kcard today" href="/admin/kegiatan/<%= k.id %>">
+      <div class="dblock"><b><%= t[0] %></b><span><%= t[1] %></span></div>
+      <div class="kcard-body">
+        <div class="kcard-top">
+          <b class="kcard-name"><%= k.nama %></b>
+          <span class="badge <%= k.buka ? 'on' : 'off' %>"><%= k.label %></span>
+        </div>
+        <div class="chips2">
+          <span class="chip2 c-h">Hadir <%= k.hadir %></span>
+          <span class="chip2 c-i">Izin <%= k.izin %></span>
+        </div>
+        <div class="bar thin"><i class="c-hadir" style="width:<%= p %>%"></i></div>
+        <small class="muted"><%= p %>% dari <%= total %> muda-mudi</small>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+
+  <!-- Kegiatan terbaru -->
+  <div class="card">
+    <div class="sec-head">
+      <h2>Kegiatan terbaru</h2>
+      <a class="pill-link" href="/admin/kegiatan">Semua ›</a>
+    </div>
+
+    <% if (!terbaru.length) { %>
+    <div class="empty">
+      <div class="empty-ic"><%- ic('calendar', 30) %></div>
+      <b>Belum ada kegiatan</b>
+      <a class="btn btn-sm" href="/admin/kegiatan"><%- ic('plus', 16) %> Buat Kegiatan</a>
+    </div>
+    <% } %>
+
+    <% terbaru.forEach(k => {
+         const t = tglID(k.tgl).split(' '); %>
+    <a class="kcard" href="/admin/kegiatan/<%= k.id %>">
+      <div class="dblock soft"><b><%= t[0] %></b><span><%= t[1] %></span></div>
+      <div class="kcard-body">
+        <div class="kcard-top">
+          <b class="kcard-name"><%= k.nama %></b>
+          <span class="badge <%= k.buka ? 'on' : 'off' %>"><%= k.label %></span>
+        </div>
+        <div class="chips2">
+          <span class="chip2 c-h">Hadir <%= k.hadir %></span>
+          <span class="chip2 c-i">Izin <%= k.izin %></span>
+          <span class="chip2 c-y"><%= t[2] %></span>
+        </div>
+      </div>
+      <span class="chev">›</span>
+    </a>
+    <% }) %>
+  </div>
+</div></body></html>

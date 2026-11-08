@@ -1,0 +1,19 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profil Saya - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap">
+  <div class="card" style="text-align:center">
+    <div class="profil-av"><%= admin.email.slice(0, 2).toUpperCase() %></div>
+    <h2 style="margin-bottom:4px"><%= admin.email %></h2>
+    <p class="muted" style="margin-top:0">Admin</p>
+    <a class="btn btn-line btn-sm" href="/admin/password"><%- ic('lock', 15) %> Ganti Kata Sandi</a>
+  </div>
+
+  <div class="card">
+    <div class="inforow"><span class="muted">Email</span><b><%= admin.email %></b></div>
+    <div class="inforow"><span class="muted">Peran</span><b>Admin</b></div>
+    <div class="inforow"><span class="muted">Jumlah admin</span><b><%= jumlahAdmin %></b></div>
+  </div>
+
+  <a class="btn btn-danger btn-block" href="/admin/logout"><%- ic('logout', 18) %> Keluar dari Akun</a>
+</div></body></html>

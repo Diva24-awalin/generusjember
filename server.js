@@ -89,6 +89,8 @@ app.locals.waLink = (no, teks) => {
   return 'https://wa.me/' + n + (teks ? '?text=' + encodeURIComponent(teks) : '');
 };
 
+require('./routes-baru')(app, pool, { requireAdmin, statusBuka });
+
 // ---------- Halaman publik ----------
 app.get('/', (req, res) => res.render('index'));
 
@@ -787,11 +789,11 @@ app.get('/admin/generus/:id', requireAdmin, async (req, res) => {
     const g = hasilGenerus.rows[0];
     if (!g) return res.redirect('/admin/generus');
 
-    const hasilRiwayat = await pool.query(`
+        const hasilRiwayat = await pool.query(`
       SELECT
         k.id,
         k.nama,
-        k.tanggal,
+        to_char(k.tanggal::date, 'YYYY-MM-DD') AS tanggal,
         a.status,
         a.terlambat,
         a.alasan
@@ -799,9 +801,9 @@ app.get('/admin/generus/:id', requireAdmin, async (req, res) => {
       LEFT JOIN absensi a
         ON a.kegiatan_id = k.id
         AND a.generus_id = $1
-      WHERE k.tanggal >= $2::date
+      WHERE k.tanggal::date >= $2::date
          OR a.id IS NOT NULL
-      ORDER BY k.tanggal DESC, k.id DESC
+      ORDER BY k.tanggal::date DESC, k.id DESC
     `, [g.id, g.created_at]);
 
     const riwayat = hasilRiwayat.rows;
