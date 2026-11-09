@@ -90,6 +90,7 @@ app.locals.waLink = (no, teks) => {
 };
 
 require('./routes-baru')(app, pool, { requireAdmin, statusBuka });
+require('./routes-komunikasi')(app, pool, { requireAdmin });
 
 // ---------- Halaman publik ----------
 app.get('/', (req, res) => res.render('index'));

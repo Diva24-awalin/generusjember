@@ -30,6 +30,9 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
     link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
     sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+    bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+    megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h3l8 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M18 9a4 4 0 0 1 0 6"/>',
+    chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   };
   const ic = (n, s = 22) =>
     `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${P[n] || ''}</svg>`;
@@ -53,6 +56,11 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
       ['Kegiatan', '/admin/kegiatan', 'calendar', 'kegiatan'],
       ['Jurnal', '/admin/jurnal', 'book', 'jurnal'],
       ['Rekap', '/admin/rekap', 'chart', 'rekap'],
+    ]],
+    ['KOMUNIKASI', [
+      ['Pengumuman', '/admin/pengumuman', 'megaphone', 'pengumuman'],
+      ['Template WA', '/admin/template-wa', 'chat', 'wa'],
+      ['Notifikasi', '/admin/notif', 'bell', 'notif'],
     ]],
     ['AKUN', [
       ['Profil Saya', '/admin/profil', 'user', 'profil'],
@@ -78,6 +86,9 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     if (p.startsWith('/admin/jurnal')) return 'jurnal';
     if (p.startsWith('/admin/profil')) return 'profil';
     if (p.startsWith('/admin/password')) return 'password';
+    if (p.startsWith('/admin/pengumuman')) return 'pengumuman';
+    if (p.startsWith('/admin/template-wa')) return 'wa';
+    if (p.startsWith('/admin/notif')) return 'notif';
     return '';
   }
 
@@ -93,6 +104,7 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     const atas = `<header class="appbar no-print"><div class="appbar-in">
       <button type="button" class="ibtn" id="btnMenu" aria-label="Menu">${ic('menu')}</button>
       <div class="appbar-title">${judul}</div>
+      <a class="ibtn bell" href="/admin/notif" aria-label="Notifikasi">${ic('bell')}<span class="bell-badge" id="bellBadge" hidden>0</span></a>
       <a class="avatar" href="/admin/profil" aria-label="Profil">${ini}</a></div></header>`;
 
     const drawer = `<div class="drawer-back no-print" id="drawerBack"></div>
@@ -117,7 +129,8 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
       function o(){d.classList.add('open');b.classList.add('open')}function c(){d.classList.remove('open');b.classList.remove('open')}
       document.getElementById('btnMenu').onclick=o;b.onclick=c;document.getElementById('btnClose').onclick=c;
       document.addEventListener('keydown',function(e){if(e.key==='Escape')c()});})();</script>
-      <script src="/konfirmasi.js"></script>`;
+      <script src="/konfirmasi.js"></script>
+      <script>fetch('/admin/notif/jumlah').then(function(r){return r.json()}).then(function(d){var b=document.getElementById('bellBadge');if(b&&d.n>0){b.textContent=d.n>9?'9+':d.n;b.hidden=false}}).catch(function(){});</script>`;
 
     return html
       .replace(/<body[^>]*>/i, () => '<body class="has-shell">' + atas)

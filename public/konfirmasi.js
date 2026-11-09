@@ -49,4 +49,16 @@
       });
     });
   });
+      document.querySelectorAll('button[data-konfirmasi]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        if (b.dataset.ok === '1') return;
+        e.preventDefault();
+        var f = b.form;
+        tampil(b.dataset.konfirmasi, true).then(function (ya) {
+          if (!ya) return;
+          b.dataset.ok = '1';
+          if (f.requestSubmit) f.requestSubmit(b); else b.click();
+        });
+      });
+    });
 })();

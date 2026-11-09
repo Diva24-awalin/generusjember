@@ -1,0 +1,81 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pengumuman - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <p class="muted" style="margin-top:0">Pengumuman berjenjang: daerah, desa, atau kelompok. Yang disematkan tampil paling atas di Beranda dan hilang sendiri setelah tanggal berlaku.</p>
+  <% if (pesan) { %><p class="<%= ok ? 'ok' : 'err' %>"><b><%= pesan %></b></p><% } %>
+
+  <details class="card" <%= (pesan && !ok) ? 'open' : '' %>>
+    <summary>+ Terbitkan Pengumuman</summary>
+    <form method="post" action="/admin/pengumuman" enctype="multipart/form-data">
+      <label>Judul</label><input name="judul" required maxlength="150">
+      <label>Isi</label><textarea name="isi" rows="5" maxlength="3000"></textarea>
+      <label>Foto (opsional, JPG/PNG/WebP, maks. 4 MB)</label>
+      <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
+
+      <label>Level</label>
+      <select name="level" id="level">
+        <option value="semua">Daerah (semua)</option>
+        <option value="desa">Desa tertentu</option>
+        <option value="kelompok">Kelompok tertentu</option>
+      </select>
+      <div id="boxDesa" hidden>
+        <label>Desa</label>
+        <select name="desa_id" id="desa">
+          <option value="">- Pilih Desa -</option>
+          <% desa.forEach(d => { %><option value="<%= d.id %>"><%= d.nama %></option><% }) %>
+        </select>
+      </div>
+      <div id="boxKel" hidden>
+        <label>Kelompok</label>
+        <select name="kelompok_id" id="kel"><option value="">- Pilih Desa dulu -</option></select>
+      </div>
+
+      <label>Berlaku sampai (kosongkan kalau tanpa batas)</label>
+      <input type="date" name="sampai">
+
+      <label class="swrow" style="margin-top:16px">
+        <span><b>Sematkan di atas Beranda</b></span>
+        <span class="sw"><input type="checkbox" name="sematkan" value="1" checked><i></i></span>
+      </label>
+      <p><button class="btn-block">Terbitkan</button></p>
+    </form>
+  </details>
+
+  <h2 style="margin:18px 0 10px">Daftar Pengumuman (<%= list.length %>)</h2>
+  <% if (!list.length) { %><div class="card muted">Belum ada pengumuman.</div><% } %>
+  <% list.forEach(p => { %>
+  <div class="card">
+    <div class="spread">
+      <b><%= p.judul %></b>
+      <span class="badge <%= p.aktif ? 'on' : 'off' %>"><%= p.aktif ? 'Aktif' : 'Kedaluwarsa' %></span>
+    </div>
+    <small class="muted"><%= p.target %><% if (p.sampai) { %> · sampai <%= tglID(p.sampai) %><% } %><% if (p.sematkan) { %> · disematkan<% } %></small>
+    <% if (p.isi) { %><p style="white-space:pre-wrap;margin:10px 0 0"><%= p.isi %></p><% } %>
+    <% if (p.ada_foto) { %><img class="pg-foto" src="/admin/pengumuman/<%= p.id %>/foto" alt=""><% } %>
+    <div class="actions" style="margin-top:12px">
+      <form class="inline" method="post" action="/admin/pengumuman/<%= p.id %>/hapus"
+            onsubmit="return confirm('Hapus pengumuman ini?')">
+        <button class="btn-danger btn-sm">Hapus</button>
+      </form>
+    </div>
+  </div>
+  <% }) %>
+</div>
+
+<script>
+const kelompok = <%- JSON.stringify(kelompok).replace(/</g, '\\u003c') %>;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function atur() {
+  const l = $('level').value;
+  $('boxDesa').hidden = l === 'semua';
+  $('boxKel').hidden = l !== 'kelompok';
+}
+function isiKel() {
+  const d = Number($('desa').value);
+  $('kel').innerHTML = '<option value="">- Pilih Kelompok -</option>' +
+    kelompok.filter(k => k.desa_id === d).map(k => `<option value="${k.id}">${esc(k.nama)}</option>`).join('');
+}
+$('level').onchange = atur; $('desa').onchange = isiKel; atur();
+</script></body></html>

@@ -163,8 +163,14 @@
             </form>
           </div>
         </td>
-        <td><% if (wa) { %><a class="btn btn-sm" target="_blank" rel="noopener" href="<%= wa %>">WhatsApp</a>
-            <% } else { %><span class="muted">-</span><% } %></td>
+        <td>
+          <% if (b.no_hp) { %>
+          <div class="actions">
+            <a class="btn btn-sm" target="_blank" rel="noopener" href="/admin/wa/<%= k.id %>/<%= b.id %>?t=undangan_kegiatan">Undang</a>
+            <a class="btn btn-line btn-sm" target="_blank" rel="noopener" href="/admin/wa/<%= k.id %>/<%= b.id %>?t=pengingat_ketidakhadiran">Ingatkan</a>
+          </div>
+          <% } else { %><span class="muted">-</span><% } %>
+        </td>
       </tr>
       <% }) %>
     </table>

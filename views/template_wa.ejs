@@ -1,0 +1,53 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Template WA - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <p class="muted" style="margin-top:0">Pesan WhatsApp tersusun dari <b>salam</b> + <b>isi</b> + <b>penutup</b>. Variabel yang bisa dipakai di isi:
+    <code>{nama}</code> <code>{kelompok}</code> <code>{desa}</code> <code>{kegiatan}</code> <code>{tanggal}</code> <code>{persen}</code></p>
+  <% if (ok) { %><p class="ok"><b>Tersimpan.</b></p><% } %>
+
+  <form class="card" method="post" action="/admin/template-wa/setting">
+    <h2>Salam &amp; Penutup</h2>
+    <p class="wahint">Dipakai di semua template.</p>
+    <label>Salam pembuka</label>
+    <input name="salam" id="salam" maxlength="200" value="<%= set.salam %>">
+    <label>Penutup</label>
+    <input name="penutup" id="penutup" maxlength="200" value="<%= set.penutup %>">
+    <p><button class="btn-sm">Simpan Salam &amp; Penutup</button></p>
+  </form>
+
+  <% list.forEach(t => { %>
+  <div class="card">
+    <div class="spread"><h2><%= t.judul %></h2><span class="tag"><%= t.kode %></span></div>
+    <form method="post" action="/admin/template-wa/<%= t.kode %>">
+      <label style="margin-top:8px">Isi pesan</label>
+      <textarea name="isi" class="isi" rows="4" maxlength="800" required><%= t.isi %></textarea>
+      <p class="wahint" style="margin-top:10px">Pratinjau:</p>
+      <div class="wabubble prev"></div>
+      <div class="actions">
+        <button class="btn-sm">Simpan</button>
+        <button type="submit" class="btn-line btn-sm" formaction="/admin/template-wa/<%= t.kode %>/reset" formnovalidate
+        data-konfirmasi="Kembalikan isi template ini ke bawaan?">Kembalikan bawaan</button>
+      </div>
+    </form>
+  </div>
+  <% }) %>
+</div>
+
+<script>
+const contoh = { nama: 'Ahmad Fauzi', kelompok: 'Kota Bambu', desa: 'Desa 1',
+  kegiatan: 'Pengajian Muda-Mudi', tanggal: '12 Nov 2026', persen: '60%' };
+const $ = (id) => document.getElementById(id);
+function susun(isi) {
+  const badan = isi.replace(/\{(\w+)\}/g, (m, k) => contoh[k] !== undefined ? contoh[k] : m);
+  return $('salam').value + '\n\n' + badan + '\n\n' + $('penutup').value;
+}
+function segarkan() {
+  document.querySelectorAll('.card').forEach(c => {
+    const ta = c.querySelector('.isi'), pv = c.querySelector('.prev');
+    if (ta && pv) pv.textContent = susun(ta.value);
+  });
+}
+document.querySelectorAll('.isi, #salam, #penutup').forEach(e => e.oninput = segarkan);
+segarkan();
+</script></body></html>

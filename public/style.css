@@ -328,3 +328,30 @@ body.has-shell{padding-bottom:92px}
 .ttrack{flex:1;width:24px;border-radius:10px;background:var(--border);display:flex;align-items:flex-end;overflow:hidden}
 .tfill{width:100%;border-radius:10px}
 .f-hi{background:#1fa36b}.f-mid{background:#e8a317}.f-lo{background:#e04848}
+
+/* ===== Pengumuman, Template WA, Notifikasi ===== */
+.bell{position:relative;display:grid;place-items:center;text-decoration:none}
+.bell-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;
+  background:#e04848;color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;border:2px solid var(--card)}
+
+.ann{display:flex;gap:12px;padding:14px;margin-bottom:12px;border-radius:20px;
+  background:linear-gradient(135deg,rgba(232,163,23,.16),rgba(15,157,154,.08));border:1px solid rgba(232,163,23,.4)}
+.ann-ic{flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-size:20px;
+  background:rgba(232,163,23,.25)}
+.ann-body{flex:1;min-width:0}
+.ann-body b{display:block;font-size:1.02rem}
+.ann-body p{margin:6px 0 0;white-space:pre-wrap;font-size:14px}
+.pg-foto{display:block;max-width:100%;max-height:340px;object-fit:cover;border-radius:14px;margin-top:10px}
+
+.nitem{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;margin-bottom:10px;text-decoration:none;
+  color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:18px}
+.nitem.baru{border-color:var(--primary);background:linear-gradient(135deg,rgba(15,157,154,.12),rgba(63,184,204,.05))}
+.nitem .ni{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:18px;
+  background:rgba(15,157,154,.14)}
+.nitem b{display:block}
+.nitem small{color:var(--muted)}
+.dot-baru{margin-left:auto;flex:none;width:10px;height:10px;border-radius:50%;background:#e04848;margin-top:6px}
+
+.wabubble{white-space:pre-wrap;font-size:14px;line-height:1.55;margin:10px 0 12px;padding:12px 14px;
+  border-radius:4px 16px 16px 16px;background:rgba(31,163,107,.14);border:1px solid rgba(31,163,107,.3)}
+.wahint{font-size:12px;color:var(--muted);margin:2px 0 0}

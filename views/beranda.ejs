@@ -12,6 +12,20 @@
     <img class="brand-logo" src="/logo.png" alt="" onerror="this.style.display='none'">
   </div>
 
+    <div id="boxPengumuman"></div>
+  <script>
+  fetch('/admin/pengumuman/aktif.json').then(r => r.json()).then(list => {
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    document.getElementById('boxPengumuman').innerHTML = list.map(p =>
+      '<div class="ann"><div class="ann-ic">📢</div><div class="ann-body">' +
+      '<b>' + esc(p.judul) + '</b>' +
+      '<small class="muted">' + esc(p.target) + (p.sampai ? ' · sampai ' + esc(p.sampai) : '') + '</small>' +
+      (p.isi ? '<p>' + esc(p.isi) + '</p>' : '') +
+      (p.ada_foto ? '<img class="pg-foto" src="/admin/pengumuman/' + Number(p.id) + '/foto" alt="">' : '') +
+      '</div></div>').join('');
+  }).catch(() => {});
+  </script>
+  
   <div class="cards2">
     <a class="mcard hero" href="/admin/generus"><span>Muda-mudi</span><b><%= total %></b><small>Terdaftar</small></a>
     <a class="mcard" href="/admin/wilayah"><span>Desa</span><b><%= desaN %></b><small>Dalam daerah</small></a>

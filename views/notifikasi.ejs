@@ -1,0 +1,20 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notifikasi - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap">
+  <p class="muted" style="margin-top:0"><%= adaBaru ? 'Ada notifikasi baru.' : 'Semua sudah dibaca.' %></p>
+
+  <% if (!list.length) { %><div class="card muted">Belum ada notifikasi.</div><% } %>
+  <% list.forEach(n => { %>
+  <a class="nitem <%= n.baru ? 'baru' : '' %>" href="<%= n.href %>">
+    <span class="ni"><%= n.jenis === 'baru' ? '👤' : (n.jenis === 'izin' ? '📝' : '📅') %></span>
+    <span>
+      <b><%= n.judul %></b>
+      <span><%= n.teks %></span><br>
+      <small><%= new Date(n.ts).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></small>
+    </span>
+    <% if (n.baru) { %><span class="dot-baru"></span><% } %>
+  </a>
+  <% }) %>
+  <p class="muted" style="font-size:12px;text-align:center">Menampilkan aktivitas 7 hari terakhir.</p>
+</div></body></html>
