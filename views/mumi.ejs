@@ -2,13 +2,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Daftar Mumi - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
 <body><div class="wrap wide">
-  <p class="muted" style="margin:0 0 4px">Data muda-mudi sesuai wilayah. Umur dihitung otomatis dari tanggal lahir.</p>
+  <p class="muted" style="margin:0 0 4px">Data muda-mudi sesuai wilayah. Umur dan jenjang dihitung otomatis dari tanggal lahir.</p>
 
   <% const dN = (desa.find(d => d.id === desaId) || {}).nama;
-     const kN = (kelompok.find(k => k.id === kelompokId) || {}).nama; %>
+     const kN = (kelompok.find(k => k.id === kelompokId) || {}).nama;
+     const jN = jenjangId === -1 ? 'Belum ada data umur' : (jenjang.find(j => j.id === jenjangId) || {}).nama; %>
   <div class="crumb">Semua Daerah
     <% if (dN) { %> › <b><%= dN %></b><% } %>
-    <% if (kN) { %> › <b><%= kN %></b><% } %></div>
+    <% if (kN) { %> › <b><%= kN %></b><% } %>
+    <% if (jN) { %> › <b><%= jN %></b><% } %></div>
 
   <form method="get" action="/admin/generus">
     <div class="mtools">
@@ -17,8 +19,21 @@
       <button type="button" class="btn btn-line btn-sm" id="btnFilter"><%- ic('sliders', 16) %> Filter</button>
     </div>
 
-    <div class="card" id="filterBox" <%= (desaId || kelompokId || jk) ? '' : 'hidden' %>>
-      <label style="margin-top:0">Desa</label>
+    <div class="card" id="filterBox" <%= (desaId || kelompokId || jk || jenjangId || status !== 'aktif') ? '' : 'hidden' %>>
+      <label style="margin-top:0">Status</label>
+      <select name="status">
+        <option value="aktif" <%= status === 'aktif' ? 'selected' : '' %>>Aktif (muda-mudi)</option>
+        <option value="menikah" <%= status === 'menikah' ? 'selected' : '' %>>Sudah menikah</option>
+        <option value="nonaktif" <%= status === 'nonaktif' ? 'selected' : '' %>>Nonaktif (pindah, dll)</option>
+        <option value="semua" <%= status === 'semua' ? 'selected' : '' %>>Semua</option>
+      </select>
+      <label>Jenjang</label>
+      <select name="jenjang_id">
+        <option value="0">Semua Jenjang</option>
+        <% jenjang.forEach(j => { %><option value="<%= j.id %>" <%= j.id === jenjangId ? 'selected' : '' %>><%= j.nama %> (<%= j.umur_dari %><%= j.umur_sampai === null ? '+' : '-' + j.umur_sampai %> th)</option><% }) %>
+        <option value="-1" <%= jenjangId === -1 ? 'selected' : '' %>>Belum ada data umur</option>
+      </select>
+      <label>Desa</label>
       <select name="desa_id" id="fDesa">
         <option value="0">Semua Desa</option>
         <% desa.forEach(d => { %><option value="<%= d.id %>" <%= d.id === desaId ? 'selected' : '' %>><%= d.nama %></option><% }) %>
@@ -35,6 +50,7 @@
         <button>Terapkan</button>
         <a class="btn btn-line" href="/admin/generus">Reset</a>
       </div>
+      <p class="wahint"><a href="/admin/jenjang">Atur rentang umur jenjang</a></p>
     </div>
   </form>
 
@@ -56,6 +72,9 @@
         <span class="tags">
           <span class="tag <%= g.jenis_kelamin === 'Perempuan' ? 'p' : 'l' %>"><%= g.jenis_kelamin === 'Perempuan' ? '♀ Perempuan' : '♂ Laki-laki' %></span>
           <% if (g.umur !== null && g.umur !== undefined) { %><span class="tag"><%= g.umur %> th</span><% } %>
+          <% if (g.jenjang) { %><span class="tag jj"><%= g.jenjang %></span>
+          <% } else { %><span class="tag bad"><%= g.umur === null || g.umur === undefined ? 'Umur belum diisi' : 'Di luar jenjang' %></span><% } %>
+                    <% if (g.status_mumi !== 'aktif') { %><span class="tag bad"><%= g.status_mumi === 'menikah' ? 'Sudah menikah' : 'Nonaktif' %></span><% } %>
         </span>
         <small class="muted"><%- ic('pin', 12) %> <%= g.desa %> · <%= g.kelompok %></small>
       </span>
@@ -78,11 +97,11 @@ const pilihKel = <%= kelompokId %>;
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function isiKel() {
   const d = Number(document.getElementById('fDesa').value);
-  const list = d ? kelompok.filter(k => k.desa_id === d) : kelompok;
+  const list = d ? kelompok.filter(k => Number(k.desa_id) === d) : kelompok;
   document.getElementById('fKel').innerHTML = '<option value="0">Semua Kelompok</option>' +
-    list.map(k => `<option value="${k.id}" ${k.id === pilihKel ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
+    list.map(k => `<option value="${k.id}" ${Number(k.id) === pilihKel ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
 }
-document.getElementById('fDesa').onchange = () => { isiKel(); };
+document.getElementById('fDesa').onchange = isiKel;
 document.getElementById('btnFilter').onclick = () => {
   const b = document.getElementById('filterBox'); b.hidden = !b.hidden;
 };

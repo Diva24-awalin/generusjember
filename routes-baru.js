@@ -33,6 +33,9 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
     megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h3l8 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M18 9a4 4 0 0 1 0 6"/>',
     chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+    alert: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   };
   const ic = (n, s = 22) =>
     `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${P[n] || ''}</svg>`;
@@ -50,12 +53,15 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     ['MUDA-MUDI', [
       ['Daftar Mumi', '/admin/generus', 'users', 'mumi'],
       ['Tambah Mumi', '/admin/generus/baru', 'plus', 'tambah'],
+      ['Pengaturan Jenjang', '/admin/jenjang', 'sliders', 'jenjang'],
     ]],
     ['KEGIATAN', [
       ['Absen', '/admin/absen', 'check', 'absen'],
       ['Kegiatan', '/admin/kegiatan', 'calendar', 'kegiatan'],
       ['Jurnal', '/admin/jurnal', 'book', 'jurnal'],
       ['Rekap', '/admin/rekap', 'chart', 'rekap'],
+      ['Rekap Generus', '/admin/rekap-generus', 'users', 'rekapgen'],
+      ['Perlu Perhatian', '/admin/perlu-perhatian', 'alert', 'perhatian'],
     ]],
     ['KOMUNIKASI', [
       ['Pengumuman', '/admin/pengumuman', 'megaphone', 'pengumuman'],
@@ -65,6 +71,7 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     ['AKUN', [
       ['Profil Saya', '/admin/profil', 'user', 'profil'],
       ['Ganti Kata Sandi / Admin', '/admin/password', 'lock', 'password'],
+      ['Log Aktivitas', '/admin/log', 'history', 'log'],
     ]],
   ];
   const TABS = [
@@ -81,6 +88,8 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     if (p.startsWith('/admin/generus')) return 'mumi';
     if (p.startsWith('/admin/absen')) return 'absen';
     if (p.startsWith('/admin/kegiatan')) return 'kegiatan';
+    if (p.startsWith('/admin/rekap-generus')) return 'rekapgen';
+    if (p.startsWith('/admin/perlu-perhatian')) return 'perhatian';
     if (p.startsWith('/admin/rekap')) return 'rekap';
     if (p.startsWith('/admin/wilayah')) return 'wilayah';
     if (p.startsWith('/admin/jurnal')) return 'jurnal';
@@ -89,6 +98,8 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     if (p.startsWith('/admin/pengumuman')) return 'pengumuman';
     if (p.startsWith('/admin/template-wa')) return 'wa';
     if (p.startsWith('/admin/notif')) return 'notif';
+    if (p.startsWith('/admin/jenjang')) return 'jenjang';
+    if (p === '/admin/log') return 'log';
     return '';
   }
 
@@ -164,14 +175,14 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     return r.rows.map(k => Object.assign({}, k, statusBuka(k)));
   }
   const totalGenerus = async () =>
-    (await pool.query('SELECT COUNT(*)::int AS c FROM generus')).rows[0].c;
+    (await pool.query('SELECT COUNT(*)::int AS c FROM mumi_aktif')).rows[0].c;
   const hariIniISO = () =>
     new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
 
   // ---------- BERANDA ----------
   app.get('/admin', requireAdmin, aman(async (req, res) => {
     const [g, d, kl, hariIni, terbaru, tigaPuluh] = await Promise.all([
-      pool.query('SELECT COUNT(*)::int AS c FROM generus'),
+      pool.query('SELECT COUNT(*)::int AS c FROM mumi_aktif'),
       pool.query('SELECT COUNT(*)::int AS c FROM desa'),
       pool.query('SELECT COUNT(*)::int AS c FROM kelompok'),
       daftarKegiatan(20, "WHERE k.tanggal::date = (NOW() AT TIME ZONE 'Asia/Jakarta')::date"),
@@ -204,7 +215,7 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     res.render('kegiatan_list', { list: await daftarKegiatan(100) });
   }, 'Gagal memuat daftar kegiatan.'));
 
-    // ---------- REKAP & MONITORING ----------
+  // ---------- REKAP & MONITORING ----------
   const tglOk = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
   const geser = (iso, n) => {
     const d = new Date(iso + 'T00:00:00Z');
@@ -218,10 +229,12 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     if (dari > sampai) dari = sampai;
     const desaId = Number(req.query.desa_id) || 0;
     const kelompokId = Number(req.query.kelompok_id) || 0;
+    const jenjangId = Number(req.query.jenjang_id) || 0;
     const izinHadir = req.query.izin === '1';
-    const prm = [desaId, kelompokId, dari, sampai];
+    const prm = [desaId, kelompokId, dari, sampai, jenjangId];
 
-    const [sesiR, orangR, desaR, kelR] = await Promise.all([
+    const [sesiR, orangR, desaR, kelR, jenR, jjR] = await Promise.all([
+      // Per kegiatan (hanya menghitung orang sesuai filter wilayah dan jenjang)
       pool.query(`
         SELECT k.id, k.nama, to_char(k.tanggal::date, 'YYYY-MM-DD') AS tgl,
           COUNT(a.id) FILTER (WHERE a.status = 'Hadir')::int AS hadir,
@@ -229,17 +242,21 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
         FROM kegiatan k
         LEFT JOIN (
           SELECT a.id, a.kegiatan_id, a.status FROM absensi a
-          JOIN generus g ON g.id = a.generus_id
+          JOIN mumi_aktif g ON g.id = a.generus_id
           JOIN kelompok kl ON kl.id = g.kelompok_id
-          WHERE ($1::int = 0 OR kl.desa_id = $1::int) AND ($2::int = 0 OR kl.id = $2::int)
+          WHERE ($1::int = 0 OR kl.desa_id = $1::int)
+            AND ($2::int = 0 OR kl.id = $2::int)
+            AND ($5::int = 0 OR g.jenjang_id = $5::int)
         ) a ON a.kegiatan_id = k.id
         WHERE k.tanggal::date BETWEEN $3::date AND $4::date
         GROUP BY k.id ORDER BY k.tanggal::date DESC, k.id DESC`, prm),
+
+      // Per orang
       pool.query(`
         SELECT g.id, g.nama, d.nama AS desa, kl.nama AS kelompok,
           COUNT(a.id) FILTER (WHERE a.status = 'Hadir')::int AS hadir,
           COUNT(a.id) FILTER (WHERE a.status = 'Izin')::int AS izin
-        FROM generus g
+        FROM mumi_aktif g
         JOIN kelompok kl ON kl.id = g.kelompok_id
         JOIN desa d ON d.id = kl.desa_id
         LEFT JOIN (
@@ -247,15 +264,37 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
           JOIN kegiatan k ON k.id = a.kegiatan_id
           WHERE k.tanggal::date BETWEEN $3::date AND $4::date
         ) a ON a.generus_id = g.id
-        WHERE ($1::int = 0 OR kl.desa_id = $1::int) AND ($2::int = 0 OR kl.id = $2::int)
-        GROUP BY g.id, d.nama, kl.nama ORDER BY g.nama`, prm),
+        WHERE ($1::int = 0 OR kl.desa_id = $1::int)
+          AND ($2::int = 0 OR kl.id = $2::int)
+          AND ($5::int = 0 OR g.jenjang_id = $5::int)
+        GROUP BY g.id, g.nama, d.nama, kl.nama ORDER BY g.nama`, prm),
+        
       pool.query('SELECT * FROM desa ORDER BY nama'),
       pool.query('SELECT * FROM kelompok ORDER BY nama'),
+      pool.query('SELECT * FROM jenjang ORDER BY umur_dari'),
+
+      // Ringkasan per jenjang (tidak ikut filter jenjang, supaya semua jenjang tampil)
+      pool.query(`
+        SELECT COALESCE(j.nama, 'Belum ada data umur') AS label, j.umur_dari,
+          COUNT(DISTINCT g.id)::int AS jumlah,
+          COUNT(a.id) FILTER (WHERE a.status = 'Hadir')::int AS hadir,
+          COUNT(a.id) FILTER (WHERE a.status = 'Izin')::int AS izin
+        FROM mumi_aktif g
+        JOIN kelompok kl ON kl.id = g.kelompok_id
+        LEFT JOIN jenjang j ON j.id = g.jenjang_id
+        LEFT JOIN (
+          SELECT a.id, a.generus_id, a.status FROM absensi a
+          JOIN kegiatan k ON k.id = a.kegiatan_id
+          WHERE k.tanggal::date BETWEEN $3::date AND $4::date
+        ) a ON a.generus_id = g.id
+        WHERE ($1::int = 0 OR kl.desa_id = $1::int) AND ($2::int = 0 OR kl.id = $2::int)
+        GROUP BY j.id, j.nama, j.umur_dari
+        ORDER BY j.umur_dari NULLS LAST`, [desaId, kelompokId, dari, sampai]),
     ]);
 
     const eff = (h, i) => h + (izinHadir ? i : 0);
     const pct = (v, t) => t ? Math.min(100, Math.round(v * 100 / t)) : 0;
-    const n = orangR.rows.length;                      // jumlah mumi dalam wilayah terpilih
+    const n = orangR.rows.length;                      // jumlah mumi sesuai filter
 
     const sesi = sesiR.rows.map(r => Object.assign({}, r, { persen: pct(eff(r.hadir, r.izin), n) }));
     const nKeg = sesi.length;
@@ -292,15 +331,21 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
       persen: pct(eff(w.hadir, w.izin), w.jumlah * nKeg),
     })).sort((a, b) => b.persen - a.persen);
 
+    // Per jenjang
+    const perJenjang = jjR.rows.map(r => Object.assign({}, r, {
+      persen: pct(eff(r.hadir, r.izin), r.jumlah * nKeg),
+    }));
+
     return {
-      f: { dari, sampai, desaId, kelompokId, izinHadir },
-      desaList: desaR.rows, kelList: kelR.rows,
+      f: { dari, sampai, desaId, kelompokId, jenjangId, izinHadir },
+      desaList: desaR.rows, kelList: kelR.rows, jenjangList: jenR.rows,
       n, nKeg, sumH, sumI, slots, hadirEf,
       belum: Math.max(slots - sumH - sumI, 0),
       persen: pct(hadirEf, slots),
-      sesi, tren, orang, wilayah, grupKel,
+      sesi, tren, orang, wilayah, grupKel, perJenjang,
       namaDesa: (desaR.rows.find(d => d.id === desaId) || {}).nama || '',
       namaKel: (kelR.rows.find(k => k.id === kelompokId) || {}).nama || '',
+      namaJenjang: (jenR.rows.find(j => j.id === jenjangId) || {}).nama || '',
     };
   }
 
@@ -309,6 +354,7 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     const qs = new URLSearchParams({
       dari: data.f.dari, sampai: data.f.sampai,
       desa_id: data.f.desaId, kelompok_id: data.f.kelompokId,
+      jenjang_id: data.f.jenjangId,
       izin: data.f.izinHadir ? '1' : '0',
     }).toString();
     res.render('rekap', Object.assign({ qs }, data));
@@ -318,7 +364,7 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     const d = await hitungRekap(req);
     const safe = (v) => { const s = String(v ?? ''); return /^[=+\-@]/.test(s) ? "'" + s : s; };
     const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
-    const lines = [['Nama', 'Desa', 'Kelompok', 'Hadir', 'Izin', 'Belum/Alpa', 'Jumlah Sesi', 'Persen Hadir']
+    const lines = [['Nama', 'Desa', 'Kelompok', 'Hadir', 'Izin', 'Belum/Alpa', 'Jumlah Kegiatan', 'Persen Hadir']
       .map(q).join(';')];
     d.orang.forEach(o => lines.push([q(safe(o.nama)), q(safe(o.desa)), q(safe(o.kelompok)),
       q(o.hadir), q(o.izin), q(o.alpa), q(d.nKeg), q(o.persen + '%')].join(';')));
@@ -346,27 +392,44 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     res.send('\uFEFFsep=;\n' + lines.join('\n'));
   }, 'Gagal mengekspor data.'));
 
-  app.get('/admin/generus', requireAdmin, aman(async (req, res) => {
+     app.get('/admin/generus', requireAdmin, aman(async (req, res) => {
     const q = (req.query.q || '').trim();
     const desaId = Number(req.query.desa_id) || 0;
     const kelompokId = Number(req.query.kelompok_id) || 0;
+    const jenjangId = Number(req.query.jenjang_id) || 0;
     const jk = ['Laki-laki', 'Perempuan'].includes(req.query.jk) ? req.query.jk : '';
-    const [rows, desa, kelompok] = await Promise.all([
+    const status = ['aktif', 'menikah', 'nonaktif', 'semua'].includes(req.query.status) ? req.query.status : 'aktif';
+    const [rows, desa, kelompok, jenjang] = await Promise.all([
       pool.query(`
-        SELECT g.id, g.nama, g.jenis_kelamin, g.no_hp, d.nama AS desa, kl.nama AS kelompok,
-          EXTRACT(YEAR FROM age(NULLIF(g.tgl_lahir::text, '')::date))::int AS umur
+        SELECT g.id, g.nama, g.jenis_kelamin, g.no_hp, g.status_mumi, g.status_ket,
+               d.nama AS desa, kl.nama AS kelompok,
+               u.umur, COALESCE(jm.nama, ja.nama) AS jenjang
         FROM generus g
         JOIN kelompok kl ON kl.id = g.kelompok_id
         JOIN desa d ON d.id = kl.desa_id
+        CROSS JOIN LATERAL (SELECT EXTRACT(YEAR FROM age(NULLIF(g.tgl_lahir::text, '')::date))::int AS umur) u
+        LEFT JOIN jenjang jm ON jm.id = g.jenjang_manual
+        LEFT JOIN LATERAL (
+          SELECT id, nama FROM jenjang
+          WHERE g.jenjang_manual IS NULL AND u.umur IS NOT NULL
+            AND u.umur >= umur_dari AND (umur_sampai IS NULL OR u.umur <= umur_sampai)
+          ORDER BY umur_dari DESC LIMIT 1) ja ON TRUE
         WHERE ($1::text = '' OR g.nama ILIKE $2 OR COALESCE(g.no_hp, '') ILIKE $2)
           AND ($3::int = 0 OR d.id = $3::int)
           AND ($4::int = 0 OR kl.id = $4::int)
           AND ($5::text = '' OR g.jenis_kelamin = $5)
-        ORDER BY g.nama LIMIT 500`, [q, `%${q}%`, desaId, kelompokId, jk]),
+          AND ($6::int = 0 OR COALESCE(jm.id, ja.id) = $6::int
+               OR ($6::int = -1 AND COALESCE(jm.id, ja.id) IS NULL))
+          AND ($7::text = 'semua' OR g.status_mumi = $7)
+        ORDER BY g.nama LIMIT 500`, [q, `%${q}%`, desaId, kelompokId, jk, jenjangId, status]),
       pool.query('SELECT * FROM desa ORDER BY nama'),
       pool.query('SELECT * FROM kelompok ORDER BY nama'),
+      pool.query('SELECT * FROM jenjang ORDER BY umur_dari'),
     ]);
-    res.render('mumi', { rows: rows.rows, desa: desa.rows, kelompok: kelompok.rows, q, desaId, kelompokId, jk });
+    res.render('mumi', {
+      rows: rows.rows, desa: desa.rows, kelompok: kelompok.rows, jenjang: jenjang.rows,
+      q, desaId, kelompokId, jenjangId, jk, status,
+    });
   }, 'Gagal memuat daftar muda-mudi.'));
 
   // ---------- TAMBAH MUMI (oleh admin, opsional langsung diabsenkan) ----------

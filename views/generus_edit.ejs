@@ -14,6 +14,12 @@
     <label>Kelompok</label>
     <select name="kelompok_id" id="kelompok" required></select>
     <label>Tanggal Lahir</label><input type="date" name="tgl_lahir" value="<%= g.tgl_lahir || '' %>">
+        <label>Jenjang</label>
+    <select name="jenjang_manual">
+      <option value="">Otomatis dari umur</option>
+      <% jenjang.forEach(j => { %><option value="<%= j.id %>" <%= Number(g.jenjang_manual) === j.id ? 'selected' : '' %>><%= j.nama %></option><% }) %>
+    </select>
+    <p class="wahint">Pilih manual hanya untuk pengecualian, misalnya anak yang telat atau lebih cepat sekolah.</p>
     <label>No. HP</label><input type="tel" name="no_hp" value="<%= g.no_hp || '' %>">
     <label>Jenis Kelamin</label>
     <select name="jenis_kelamin">
@@ -22,17 +28,40 @@
     </select>
     <p><button class="btn-block">Simpan Perubahan</button></p>
   </form>
+    <form class="card" method="post" action="/admin/generus/<%= g.id %>/status">
+    <h2>Status Muda-mudi</h2>
+    <p class="muted" style="margin-top:0;font-size:14px">Yang sudah menikah atau nonaktif tidak dihitung di total, daftar belum hadir, dan rekap. Riwayat absennya tetap tersimpan.</p>
+    <label>Status</label>
+    <select name="status">
+      <option value="aktif" <%= g.status_mumi === 'aktif' ? 'selected' : '' %>>Aktif (muda-mudi)</option>
+      <option value="menikah" <%= g.status_mumi === 'menikah' ? 'selected' : '' %>>Sudah menikah</option>
+      <option value="nonaktif" <%= g.status_mumi === 'nonaktif' ? 'selected' : '' %>>Nonaktif (pindah, dll)</option>
+    </select>
+    <label>Keterangan (opsional)</label>
+    <input name="ket" maxlength="150" value="<%= g.status_ket || '' %>" placeholder="Contoh: menikah Okt 2026">
+    <p><button class="btn-block">Simpan Status</button></p>
+  </form>
 </div>
 
 <script>
 const kelompok = <%- JSON.stringify(kelompok).replace(/</g, '\\u003c') %>;
 const sekarang = <%= g.kelompok_id %>;
+const desaAwal = <%= g.desa_id %>;
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function isi() {
-  const d = document.getElementById('desa').value;
-  document.getElementById('kelompok').innerHTML = kelompok.filter(k => k.desa_id == d)
-    .map(k => `<option value="${k.id}" ${k.id === sekarang ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
+
+function isi(pilih) {
+  const d = Number(document.getElementById('desa').value);
+  const list = kelompok.filter(k => Number(k.desa_id) === d);
+  document.getElementById('kelompok').innerHTML =
+    '<option value="">- Pilih Kelompok -</option>' +
+    list.map(k => `<option value="${k.id}" ${Number(k.id) === Number(pilih) ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
 }
-document.getElementById('desa').onchange = isi;
-isi();
+
+// Saat halaman dibuka: pilih kelompok yang sekarang.
+isi(sekarang);
+
+// Saat desa diganti: kelompok lama hanya dipilih kalau desanya masih sama.
+document.getElementById('desa').onchange = function () {
+  isi(Number(this.value) === desaAwal ? sekarang : null);
+};
 </script></body></html>

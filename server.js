@@ -89,8 +89,14 @@ app.locals.waLink = (no, teks) => {
   return 'https://wa.me/' + n + (teks ? '?text=' + encodeURIComponent(teks) : '');
 };
 
+const logAktivitas = require('./routes-log')(app, pool, { requireAdmin });  // 1) PALING ATAS
+
 require('./routes-baru')(app, pool, { requireAdmin, statusBuka });
 require('./routes-komunikasi')(app, pool, { requireAdmin });
+require('./routes-jenjang')(app, pool, { requireAdmin });
+require('./routes-perhatian')(app, pool, { requireAdmin });
+
+logAktivitas.halaman();                                                      // 2) SETELAH keduanya
 
 // ---------- Halaman publik ----------
 app.get('/', (req, res) => res.render('index'));
@@ -148,7 +154,7 @@ app.get('/admin', requireAdmin, async (req, res) => {
     }));
 
     const hasilGenerus = await pool.query(
-      'SELECT COUNT(*)::int AS c FROM generus'
+      'SELECT COUNT(*)::int AS c FROM mumi_aktif'
     );
 
     const totalGenerus = hasilGenerus.rows[0].c;
@@ -337,7 +343,7 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
         g.no_hp,
         d.nama AS desa,
         kl.nama AS kelompok
-      FROM generus g
+      FROM mumi_aktif g
       JOIN kelompok kl ON kl.id = g.kelompok_id
       JOIN desa d ON d.id = kl.desa_id
       WHERE NOT EXISTS (
@@ -351,7 +357,7 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
     const belumList = hasilBelum.rows;
 
     const hasilTotal = await pool.query(
-      'SELECT COUNT(*)::int AS c FROM generus'
+      'SELECT COUNT(*)::int AS c FROM mumi_aktif'
     );
     const total = hasilTotal.rows[0].c;
 
@@ -374,7 +380,7 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
         COALESCE(SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END), 0)::int AS izin
       FROM desa d
       LEFT JOIN kelompok kl ON kl.desa_id = d.id
-      LEFT JOIN generus g ON g.kelompok_id = kl.id
+      LEFT JOIN mumi_aktif g ON g.kelompok_id = kl.id
       LEFT JOIN absensi a
         ON a.generus_id = g.id
         AND a.kegiatan_id = $1
@@ -393,7 +399,7 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
         COALESCE(SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END), 0)::int AS izin
       FROM kelompok kl
       JOIN desa d ON d.id = kl.desa_id
-      LEFT JOIN generus g ON g.kelompok_id = kl.id
+      LEFT JOIN mumi_aktif g ON g.kelompok_id = kl.id
       LEFT JOIN absensi a
         ON a.generus_id = g.id
         AND a.kegiatan_id = $1
@@ -402,6 +408,23 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
     `, [k.id]);
 
     const perKelompok = hasilPerKelompok.rows;
+    
+        const hasilPerJenjang = await pool.query(`
+      SELECT
+        COALESCE(j.nama, 'Belum ada data umur') AS jenjang,
+        COUNT(g.id)::int AS total,
+        COALESCE(SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END), 0)::int AS hadir,
+        COALESCE(SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END), 0)::int AS izin
+      FROM mumi_aktif g
+      LEFT JOIN jenjang j ON j.id = g.jenjang_id
+      LEFT JOIN absensi a
+        ON a.generus_id = g.id
+        AND a.kegiatan_id = $1
+      GROUP BY j.id, j.nama, j.umur_dari
+      ORDER BY j.umur_dari NULLS LAST
+    `, [k.id]);
+
+    const perJenjang = hasilPerJenjang.rows;
 
     res.render('kegiatan', {
       k,
@@ -412,7 +435,8 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
       belumList,
       stat,
       perDesa,
-      perKelompok
+      perKelompok,
+      perJenjang
     });
   } catch (error) {
     console.error('Detail kegiatan error:', error);
@@ -643,7 +667,7 @@ app.get('/admin/kegiatan/:id/export', requireAdmin, async (req, res) => {
         g.tgl_lahir,
         g.no_hp,
         g.jenis_kelamin
-      FROM generus g
+      FROM mumi_aktif g
       JOIN kelompok kl ON kl.id = g.kelompok_id
       JOIN desa d ON d.id = kl.desa_id
       WHERE NOT EXISTS (
@@ -753,7 +777,7 @@ app.get('/admin/generus', requireAdmin, async (req, res) => {
               FROM absensi
               WHERE generus_id = g.id
             )) AS total
-      FROM generus g
+      FROM mumi_aktif g
       JOIN kelompok kl ON kl.id = g.kelompok_id
       JOIN desa d ON d.id = kl.desa_id
       WHERE ($1 = '' OR g.nama ILIKE $2)
@@ -840,18 +864,17 @@ app.get('/admin/generus/:id/edit', requireAdmin, async (req, res) => {
     const g = hasilGenerus.rows[0];
     if (!g) return res.redirect('/admin/generus');
 
-    const hasilDesa = await pool.query(
-      'SELECT * FROM desa ORDER BY nama'
-    );
-
-    const hasilKelompok = await pool.query(
-      'SELECT * FROM kelompok ORDER BY nama'
-    );
+    const [hasilDesa, hasilKelompok, hasilJenjang] = await Promise.all([
+      pool.query('SELECT * FROM desa ORDER BY nama'),
+      pool.query('SELECT * FROM kelompok ORDER BY nama'),
+      pool.query('SELECT * FROM jenjang ORDER BY umur_dari'),
+    ]);
 
     res.render('generus_edit', {
       g,
       desa: hasilDesa.rows,
-      kelompok: hasilKelompok.rows
+      kelompok: hasilKelompok.rows,
+      jenjang: hasilJenjang.rows
     });
   } catch (error) {
     console.error('Halaman edit generus error:', error);
@@ -862,23 +885,17 @@ app.get('/admin/generus/:id/edit', requireAdmin, async (req, res) => {
 app.post('/admin/generus/:id/edit', requireAdmin, async (req, res) => {
   try {
     const { nama, kelompok_id, tgl_lahir, no_hp, jenis_kelamin } = req.body;
+    const jm = Number(req.body.jenjang_manual) || null;
 
     if (nama && nama.trim() && kelompok_id) {
       await pool.query(`
         UPDATE generus
-        SET nama = $1,
-            kelompok_id = $2,
-            tgl_lahir = $3,
-            no_hp = $4,
-            jenis_kelamin = $5
-        WHERE id = $6
+        SET nama = $1, kelompok_id = $2, tgl_lahir = $3,
+            no_hp = $4, jenis_kelamin = $5, jenjang_manual = $6
+        WHERE id = $7
       `, [
-        nama.trim(),
-        kelompok_id,
-        tgl_lahir || null,
-        no_hp || null,
-        jenis_kelamin || null,
-        req.params.id
+        nama.trim(), kelompok_id, tgl_lahir || null,
+        no_hp || null, jenis_kelamin || null, jm, req.params.id
       ]);
     }
 
@@ -1100,7 +1117,7 @@ app.get('/api/cari', async (req, res) => {
         g.nama,
         d.nama AS desa,
         kl.nama AS kelompok
-      FROM generus g
+      FROM mumi_aktif g
       JOIN kelompok kl ON kl.id = g.kelompok_id
       JOIN desa d ON d.id = kl.desa_id
       WHERE g.nama ILIKE $1

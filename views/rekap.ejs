@@ -9,7 +9,10 @@
 
   <div class="crumb">Semua Daerah
     <% if (namaDesa) { %> › <b><%= namaDesa %></b><% } %>
-    <% if (namaKel) { %> › <b><%= namaKel %></b><% } %></div>
+    <% if (namaKel) { %> › <b><%= namaKel %></b><% } %>
+    <% if (namaJenjang) { %> › <b><%= namaJenjang %></b><% } %>
+  </div>
+    
 
   <form method="get" action="/admin/rekap" id="fRekap">
     <div class="mtools">
@@ -27,6 +30,11 @@
         <div><label style="margin-top:0">Dari</label><input type="date" name="dari" id="fDari" value="<%= f.dari %>"></div>
         <div><label style="margin-top:0">Sampai</label><input type="date" name="sampai" id="fSampai" value="<%= f.sampai %>"></div>
       </div>
+      <label>Jenjang</label>
+      <select name="jenjang_id">
+        <option value="0">Semua Jenjang</option>
+        <% jenjangList.forEach(j => { %><option value="<%= j.id %>" <%= j.id === f.jenjangId ? 'selected' : '' %>><%= j.nama %></option><% }) %>
+      </select>
       <label>Desa</label>
       <select name="desa_id" id="fDesa">
         <option value="0">Semua Desa</option>
@@ -59,6 +67,22 @@
       <div class="sb sb-i"><b><%= sumI %></b>Izin</div>
       <div class="sb sb-b"><b><%= belum %></b>Belum</div>
     </div>
+  </div>
+
+    <!-- Ringkasan per jenjang -->
+  <div class="card">
+    <h2>Per Jenjang</h2>
+    <% perJenjang.forEach(j => { %>
+    <div style="margin:14px 0">
+      <div class="spread" style="font-size:14px">
+        <b><%= j.label %></b>
+        <span class="pct <%= lv(j.persen) %>"><%= j.persen %>%</span>
+      </div>
+      <div class="bar" style="margin-top:6px"><i class="c-hadir" style="width:<%= j.persen %>%"></i></div>
+      <small class="muted">Hadir <%= j.hadir %> · Izin <%= j.izin %> · <%= j.jumlah %> muda-mudi</small>
+    </div>
+    <% }) %>
+    <% if (!perJenjang.length) { %><p class="muted">Tidak ada data.</p><% } %>
   </div>
 
   <!-- Tab -->
@@ -156,9 +180,9 @@ const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','
 $('btnFilter').onclick = () => { $('filterBox').hidden = !$('filterBox').hidden; };
 function isiKel() {
   const d = Number($('fDesa').value);
-  const list = d ? kelompok.filter(k => k.desa_id === d) : kelompok;
+  const list = d ? kelompok.filter(k => Number(k.desa_id) === d) : kelompok;
   $('fKel').innerHTML = '<option value="0">Semua Kelompok</option>' +
-    list.map(k => `<option value="${k.id}" ${k.id === pilihKel ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
+    list.map(k => `<option value="${k.id}" ${Number(k.id) === pilihKel ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
 }
 $('fDesa').onchange = isiKel; isiKel();
 

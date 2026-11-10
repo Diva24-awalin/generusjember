@@ -1,0 +1,79 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rekap Generus - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <% const lv = p => p >= 75 ? 'hi' : (p >= 50 ? 'mid' : 'lo'); %>
+
+  <p class="muted" style="margin:0 0 4px;font-size:13px">
+    Persen = hadir ÷ jumlah kegiatan yang diikuti (sejak terdaftar). Merah = di bawah ambang <%= f.ambang %>%.</p>
+
+  <div class="crumb">Semua Daerah
+    <% if (namaDesa) { %> › <b><%= namaDesa %></b><% } %>
+    <% if (namaKel) { %> › <b><%= namaKel %></b><% } %></div>
+
+  <form method="get" action="/admin/rekap-generus" id="fRG">
+    <div class="mtools no-print">
+      <button type="button" class="btn btn-line btn-sm" id="btnFilter"><%- ic('sliders', 16) %> Filter</button>
+      <a class="btn btn-line btn-sm" href="/admin/rekap-generus/export?<%= qs %>"><%- ic('download', 16) %> Excel</a>
+      <button type="button" class="btn btn-line btn-sm" onclick="window.print()"><%- ic('file', 16) %> PDF</button>
+      <a class="btn btn-sm" href="/admin/perlu-perhatian"><%- ic('alert', 16) %> Perlu Perhatian</a>
+    </div>
+
+    <div class="card no-print" id="filterBox" hidden>
+      <div class="row stack">
+        <div><label style="margin-top:0">Dari</label><input type="date" name="dari" value="<%= f.dari %>"></div>
+        <div><label style="margin-top:0">Sampai</label><input type="date" name="sampai" value="<%= f.sampai %>"></div>
+      </div>
+      <label>Desa</label>
+      <select name="desa_id" id="fDesa">
+        <option value="0">Semua Desa</option>
+        <% desaList.forEach(d => { %><option value="<%= d.id %>" <%= d.id === f.desaId ? 'selected' : '' %>><%= d.nama %></option><% }) %>
+      </select>
+      <label>Kelompok</label>
+      <select name="kelompok_id" id="fKel"></select>
+      <label>Ambang kehadiran (%)</label>
+      <input type="number" name="ambang" min="1" max="100" value="<%= f.ambang %>">
+      <div class="row" style="margin-top:14px">
+        <button>Terapkan</button>
+        <a class="btn btn-line" href="/admin/rekap-generus">Reset</a>
+      </div>
+    </div>
+
+    <label class="swrow no-print">
+      <span><b>Izin dihitung hadir</b><br><small class="muted">Aktifkan kalau kebijakan menganggap izin sebagai hadir</small></span>
+      <span class="sw"><input type="checkbox" name="izin" value="1" <%= f.izinHadir ? 'checked' : '' %> onchange="this.form.submit()"><i></i></span>
+    </label>
+  </form>
+
+  <p class="muted" style="font-size:13px"><%= tglID(f.dari) %> – <%= tglID(f.sampai) %> ·
+    <b><%= orang.length %></b> muda-mudi · <b style="color:#d03a3a"><%= rendahN %></b> di bawah ambang</p>
+
+  <% orang.forEach(o => {
+       const ini = o.nama.trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase(); %>
+  <a class="mrow <%= o.rendah ? 'warn' : '' %>" href="/admin/generus/<%= o.id %>" style="text-decoration:none;color:inherit">
+    <span class="avatar-sm"><%= ini %></span>
+    <span class="mrow-info" style="flex:1">
+      <b><%= o.nama %></b>
+      <small class="muted"><%= o.desa %> · <%= o.kelompok %></small><br>
+      <small class="muted">Sesi <%= o.sesi %> · Hadir <%= o.h %> · Izin <%= o.i %> · Tidak hadir <%= o.th %></small>
+    </span>
+    <b class="pct <%= lv(o.persen) %>"><%= o.persen %>%</b>
+  </a>
+  <% }) %>
+  <% if (!orang.length) { %><div class="card muted">Tidak ada data.</div><% } %>
+</div>
+
+<script>
+const kelompok = <%- JSON.stringify(kelList).replace(/</g, '\\u003c') %>;
+const pilihKel = <%= f.kelompokId %>;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+$('btnFilter').onclick = () => { $('filterBox').hidden = !$('filterBox').hidden; };
+function isiKel() {
+  const d = Number($('fDesa').value);
+  const list = d ? kelompok.filter(k => Number(k.desa_id) === d) : kelompok;
+  $('fKel').innerHTML = '<option value="0">Semua Kelompok</option>' +
+    list.map(k => `<option value="${k.id}" ${Number(k.id) === pilihKel ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
+}
+$('fDesa').onchange = isiKel; isiKel();
+</script></body></html>

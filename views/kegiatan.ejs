@@ -57,6 +57,25 @@
     <% }) %>
   </div>
 
+    <!-- Per jenjang -->
+  <div class="card">
+    <h2>Per Jenjang</h2>
+    <% perJenjang.forEach(j => {
+         const p = j.total ? Math.round(j.hadir * 100 / j.total) : 0; %>
+    <div style="margin:14px 0">
+      <div class="spread" style="font-size:14px">
+        <b><%= j.jenjang %></b>
+        <span class="pct <%= p >= 75 ? 'hi' : (p >= 50 ? 'mid' : 'lo') %>"><%= p %>%</span>
+      </div>
+      <div class="bar" style="margin-top:6px">
+        <i class="c-hadir" style="width:<%= j.total ? j.hadir * 100 / j.total : 0 %>%"></i>
+        <i class="c-izin" style="width:<%= j.total ? j.izin * 100 / j.total : 0 %>%"></i>
+      </div>
+      <small class="muted">Hadir <%= j.hadir %> · Izin <%= j.izin %> · dari <%= j.total %> orang</small>
+    </div>
+    <% }) %>
+  </div>
+  
   <!-- Per kelompok -->
   <div class="card table-wrap">
     <h2>Per Kelompok</h2>

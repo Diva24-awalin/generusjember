@@ -1,0 +1,43 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pengaturan Jenjang - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <p class="muted" style="margin-top:0">Jenjang dihitung otomatis dari tanggal lahir. Ubah rentang umur di sini dan semua data langsung mengikuti. Kosongkan "umur sampai" kalau tanpa batas atas.</p>
+  <% if (ok) { %><p class="ok"><b><%= ok %></b></p><% } %>
+  <% if (err) { %><p class="err"><b><%= err %></b></p><% } %>
+
+  <% list.forEach(j => { %>
+  <form class="card" method="post" action="/admin/jenjang/<%= j.id %>">
+    <div class="spread">
+      <h2><%= j.nama %></h2>
+      <span class="tag"><%= jumlah[j.id] || 0 %> orang</span>
+    </div>
+    <label style="margin-top:6px">Nama jenjang</label>
+    <input name="nama" value="<%= j.nama %>" maxlength="40" required>
+    <div class="row stack">
+      <div><label>Umur dari</label><input type="number" name="umur_dari" min="0" max="120" value="<%= j.umur_dari %>" required></div>
+      <div><label>Umur sampai</label><input type="number" name="umur_sampai" min="0" max="120" value="<%= j.umur_sampai === null ? '' : j.umur_sampai %>" placeholder="tanpa batas"></div>
+    </div>
+    <div class="actions" style="margin-top:14px">
+      <button class="btn-sm">Simpan</button>
+      <button type="submit" class="btn-danger btn-sm" formaction="/admin/jenjang/<%= j.id %>/hapus" formnovalidate
+              data-konfirmasi="Hapus jenjang ini? Jenjang manual yang memakainya akan kembali otomatis.">Hapus</button>
+    </div>
+  </form>
+  <% }) %>
+
+  <div class="card">
+    <b><%= belum %> orang</b> belum punya jenjang (tanggal lahir kosong, atau umurnya di luar semua rentang).
+    <a href="/admin/generus?jenjang_id=-1">Lihat daftarnya</a>
+  </div>
+
+  <form class="card" method="post" action="/admin/jenjang">
+    <h2>Tambah Jenjang</h2>
+    <label>Nama jenjang</label><input name="nama" maxlength="40" required placeholder="Contoh: Cabe Rawit">
+    <div class="row stack">
+      <div><label>Umur dari</label><input type="number" name="umur_dari" min="0" max="120" required></div>
+      <div><label>Umur sampai</label><input type="number" name="umur_sampai" min="0" max="120" placeholder="tanpa batas"></div>
+    </div>
+    <p><button class="btn-block">Tambah</button></p>
+  </form>
+</div></body></html>

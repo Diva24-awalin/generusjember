@@ -1,0 +1,90 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perlu Perhatian - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <p class="muted" style="margin:0 0 4px;font-size:13px">
+    Muda-mudi yang hadirnya di bawah <b><%= f.ambang %>%</b> dalam <b><%= f.hari %> hari</b>
+    atau tidak hadir <b><%= f.beruntun %>×</b> berturut-turut. Ambang bisa diubah di Filter.</p>
+
+  <div class="crumb">Semua Daerah
+    <% if (namaDesa) { %> › <b><%= namaDesa %></b><% } %>
+    <% if (namaKel) { %> › <b><%= namaKel %></b><% } %></div>
+
+  <form method="get" action="/admin/perlu-perhatian">
+    <div class="mtools">
+      <button type="button" class="btn btn-line btn-sm" id="btnFilter"><%- ic('sliders', 16) %> Filter</button>
+      <a class="btn btn-line btn-sm" href="/admin/rekap-generus"><%- ic('users', 16) %> Rekap Generus</a>
+    </div>
+
+    <div class="card" id="filterBox" hidden>
+      <div class="row stack">
+        <div><label style="margin-top:0">Periode (hari)</label><input type="number" name="hari" min="1" max="365" value="<%= f.hari %>"></div>
+        <div><label style="margin-top:0">Ambang hadir (%)</label><input type="number" name="ambang" min="1" max="100" value="<%= f.ambang %>"></div>
+        <div><label style="margin-top:0">Tidak hadir berturut</label><input type="number" name="beruntun" min="1" max="20" value="<%= f.beruntun %>"></div>
+      </div>
+      <label>Desa</label>
+      <select name="desa_id" id="fDesa">
+        <option value="0">Semua Desa</option>
+        <% desaList.forEach(d => { %><option value="<%= d.id %>" <%= d.id === f.desaId ? 'selected' : '' %>><%= d.nama %></option><% }) %>
+      </select>
+      <label>Kelompok</label>
+      <select name="kelompok_id" id="fKel"></select>
+      <div class="row" style="margin-top:14px">
+        <button>Terapkan</button>
+        <a class="btn btn-line" href="/admin/perlu-perhatian">Reset (60% / 30 hari / 3×)</a>
+      </div>
+    </div>
+  </form>
+
+  <div class="stats s3">
+    <div class="stat"><b><%= daftar.length %></b><span>Perlu perhatian</span></div>
+    <div class="stat"><b><%= totalOrang %></b><span>Muda-mudi</span></div>
+    <div class="stat"><b><%= nKeg %></b><span>Kegiatan (<%= f.hari %> hari)</span></div>
+  </div>
+
+  <% if (!daftar.length) { %>
+  <div class="empty card">
+    <div class="empty-ic"><%- ic('check', 30) %></div>
+    <b>Alhamdulillah, tidak ada yang perlu perhatian</b>
+    <p class="muted"><%= nKeg ? 'Semua muda-mudi di atas ambang.' : 'Belum ada kegiatan pada periode ini.' %></p>
+  </div>
+  <% } %>
+
+  <% daftar.forEach(o => {
+       const ini = o.nama.trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase(); %>
+  <div class="mrow warn">
+    <a class="mrow-main" href="/admin/generus/<%= o.id %>">
+      <span class="avatar-sm"><%= ini %></span>
+      <span class="mrow-info">
+        <b><%= o.nama %></b>
+        <small class="muted"><%= o.desa %> · <%= o.kelompok %></small>
+        <span class="tags">
+          <% if (o.rendah) { %><span class="tag bad">hadir rendah <%= o.persen %>% (<%= o.h %>/<%= o.sesi %>)</span><% } %>
+          <% if (o.berturut) { %><span class="tag bad">tidak hadir <%= o.beruntun %>× berturut</span><% } %>
+        </span>
+      </span>
+    </a>
+    <div class="mrow-act">
+      <% if (o.no_hp && kegTerakhir) { %>
+      <a class="btn btn-sm" target="_blank" rel="noopener"
+         href="/admin/wa/<%= kegTerakhir %>/<%= o.id %>?t=pengingat_ketidakhadiran">Ingatkan</a>
+      <% } else { %><small class="muted">No. HP kosong</small><% } %>
+    </div>
+  </div>
+  <% }) %>
+</div>
+
+<script>
+const kelompok = <%- JSON.stringify(kelList).replace(/</g, '\\u003c') %>;
+const pilihKel = <%= f.kelompokId %>;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+$('btnFilter').onclick = () => { $('filterBox').hidden = !$('filterBox').hidden; };
+function isiKel() {
+  const d = Number($('fDesa').value);
+  const list = d ? kelompok.filter(k => Number(k.desa_id) === d) : kelompok;
+  $('fKel').innerHTML = '<option value="0">Semua Kelompok</option>' +
+    list.map(k => `<option value="${k.id}" ${Number(k.id) === pilihKel ? 'selected' : ''}>${esc(k.nama)}</option>`).join('');
+}
+$('fDesa').onchange = isiKel; isiKel();
+</script></body></html>

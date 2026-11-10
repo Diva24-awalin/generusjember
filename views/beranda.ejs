@@ -40,7 +40,7 @@
     <a class="qi-wrap" href="/admin/rekap"><span class="qi q-green"><%- ic('chart', 24) %></span>Rekap</a>
     <a class="qi-wrap" href="/admin/jurnal"><span class="qi q-violet"><%- ic('book', 24) %></span>Jurnal</a>
     <a class="qi-wrap" href="/admin/wilayah"><span class="qi q-rose"><%- ic('pin', 24) %></span>Wilayah</a>
-    <a class="qi-wrap" href="/admin/profil"><span class="qi q-slate"><%- ic('user', 24) %></span>Akun</a>
+    <a class="qi-wrap" href="#" id="btnLainnya"><span class="qi q-slate"><%- ic('grid', 24) %></span>Lainnya</a>
   </div>
 
     <!-- Kegiatan hari ini -->
@@ -114,4 +114,29 @@
     </a>
     <% }) %>
   </div>
+    <div class="sheet-back" id="sheetBack"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <h2 style="margin:6px 0 14px">Menu Lainnya</h2>
+    <div class="quick" style="box-shadow:none;border:0;padding:0;margin:0">
+      <a class="qi-wrap" href="/admin/rekap-generus"><span class="qi q-teal"><%- ic('users', 24) %></span>Rekap Generus</a>
+      <a class="qi-wrap" href="/admin/perlu-perhatian"><span class="qi q-rose"><%- ic('alert', 24) %></span>Perlu Perhatian</a>
+      <a class="qi-wrap" href="/admin/pengumuman"><span class="qi q-amber"><%- ic('megaphone', 24) %></span>Pengumuman</a>
+      <a class="qi-wrap" href="/admin/template-wa"><span class="qi q-green"><%- ic('chat', 24) %></span>Template WA</a>
+      <a class="qi-wrap" href="/admin/notif"><span class="qi q-sky"><%- ic('bell', 24) %></span>Notifikasi</a>
+      <a class="qi-wrap" href="/admin/generus/export"><span class="qi q-blue"><%- ic('download', 24) %></span>Export Data</a>
+      <a class="qi-wrap" href="/admin/log"><span class="qi q-violet"><%- ic('history', 24) %></span>Log Aktivitas</a>
+      <a class="qi-wrap" href="/admin/profil"><span class="qi q-slate"><%- ic('user', 24) %></span>Akun</a>
+    </div>
+  </div>
+  <script>
+  (function () {
+    var s = document.getElementById('sheet'), b = document.getElementById('sheetBack');
+    function buka() { s.classList.add('open'); b.classList.add('open'); }
+    function tutup() { s.classList.remove('open'); b.classList.remove('open'); }
+    document.getElementById('btnLainnya').onclick = function (e) { e.preventDefault(); buka(); };
+    b.onclick = tutup;
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') tutup(); });
+  })();
+  </script>
 </div></body></html>

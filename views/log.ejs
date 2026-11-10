@@ -1,0 +1,48 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Log Aktivitas - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <p class="muted" style="margin-top:0">Aktivitas semua admin dan peserta: login, ekspor, perubahan absensi dan data. Log disimpan 180 hari.</p>
+
+  <form method="get" action="/admin/log">
+    <input type="hidden" name="kat" value="<%= kat %>">
+    <div class="mtools">
+      <div class="searchbar"><span class="si"><%- ic('search', 18) %></span>
+        <input name="q" value="<%= q %>" placeholder="Cari nama / detail..."></div>
+      <button class="btn-sm">Cari</button>
+    </div>
+  </form>
+
+  <div class="tabs" style="flex-wrap:wrap">
+    <% KAT.forEach(k => { %>
+    <a class="btn pilih btn-sm <%= kat === k[0] ? 'on' : '' %>"
+       href="/admin/log?kat=<%= k[0] %>&q=<%= encodeURIComponent(q) %>"><%= k[1] %></a>
+    <% }) %>
+  </div>
+
+  <div class="card">
+    <div class="spread" style="margin-bottom:6px">
+      <b><%= jumlah %> aktivitas</b>
+      <small class="muted">Halaman <%= hal %> dari <%= halaman %></small>
+    </div>
+
+    <% if (!rows.length) { %><p class="muted">Belum ada aktivitas yang cocok.</p><% } %>
+    <% rows.forEach(r => { %>
+    <div class="logrow">
+      <div style="min-width:0">
+        <div class="log-time"><%= r.waktu %> WIB<% if (r.ip) { %> · <%= r.ip %><% } %></div>
+        <div class="log-who"><%= r.admin_email || 'Peserta (via QR)' %></div>
+        <div class="log-det"><%= r.detail %></div>
+      </div>
+      <span class="ltag k-<%= r.kategori %> <%= r.aksi === 'login_gagal' || r.aksi === 'absen_ditolak' ? 'bad' : '' %>">
+        <%= LABEL[r.aksi] || r.aksi %></span>
+    </div>
+    <% }) %>
+
+    <div class="pager">
+      <% const base = '/admin/log?kat=' + kat + '&q=' + encodeURIComponent(q) + '&hal='; %>
+      <% if (hal > 1) { %><a class="btn btn-line btn-sm" href="<%= base + (hal - 1) %>">‹ Lebih baru</a><% } else { %><span></span><% } %>
+      <% if (hal < halaman) { %><a class="btn btn-line btn-sm" href="<%= base + (hal + 1) %>">Lebih lama ›</a><% } %>
+    </div>
+  </div>
+</div></body></html>

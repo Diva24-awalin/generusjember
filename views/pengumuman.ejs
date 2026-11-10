@@ -71,11 +71,17 @@ function atur() {
   const l = $('level').value;
   $('boxDesa').hidden = l === 'semua';
   $('boxKel').hidden = l !== 'kelompok';
+  $('desa').required = l !== 'semua';
+  $('kel').required = l === 'kelompok';
 }
 function isiKel() {
-  const d = Number($('desa').value);
-  $('kel').innerHTML = '<option value="">- Pilih Kelompok -</option>' +
-    kelompok.filter(k => k.desa_id === d).map(k => `<option value="${k.id}">${esc(k.nama)}</option>`).join('');
+  const d = String($('desa').value);
+  const list = kelompok.filter(k => String(k.desa_id) === d);
+  $('kel').innerHTML = (d ? '<option value="">- Pilih Kelompok -</option>'
+                           : '<option value="">- Pilih Desa dulu -</option>') +
+    list.map(k => `<option value="${k.id}">${esc(k.nama)}</option>`).join('');
 }
-$('level').onchange = atur; $('desa').onchange = isiKel; atur();
+$('level').onchange = atur;
+$('desa').onchange = isiKel;
+atur(); isiKel();
 </script></body></html>
