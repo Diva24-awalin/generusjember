@@ -74,7 +74,8 @@
           <% if (g.umur !== null && g.umur !== undefined) { %><span class="tag"><%= g.umur %> th</span><% } %>
           <% if (g.jenjang) { %><span class="tag jj"><%= g.jenjang %></span>
           <% } else { %><span class="tag bad"><%= g.umur === null || g.umur === undefined ? 'Umur belum diisi' : 'Di luar jenjang' %></span><% } %>
-                    <% if (g.status_mumi !== 'aktif') { %><span class="tag bad"><%= g.status_mumi === 'menikah' ? 'Sudah menikah' : 'Nonaktif' %></span><% } %>
+          <% if (g.status_mumi !== 'aktif') { %><span class="tag bad"><%= g.status_mumi === 'menikah' ? 'Sudah menikah' : 'Nonaktif' %></span><% } %>
+          <% if (g.dapukan) { %><span class="tag jj">★ <%= g.dapukan %></span><% } %>
         </span>
         <small class="muted"><%- ic('pin', 12) %> <%= g.desa %> · <%= g.kelompok %></small>
       </span>

@@ -36,6 +36,7 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
     alert: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
     grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
   };
   const ic = (n, s = 22) =>
     `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${P[n] || ''}</svg>`;
@@ -54,6 +55,7 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
       ['Daftar Mumi', '/admin/generus', 'users', 'mumi'],
       ['Tambah Mumi', '/admin/generus/baru', 'plus', 'tambah'],
       ['Pengaturan Jenjang', '/admin/jenjang', 'sliders', 'jenjang'],
+      ['Pengurus MUMIDA', '/admin/pengurus', 'shield', 'pengurus'],
     ]],
     ['KEGIATAN', [
       ['Absen', '/admin/absen', 'check', 'absen'],
@@ -99,6 +101,7 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     if (p.startsWith('/admin/template-wa')) return 'wa';
     if (p.startsWith('/admin/notif')) return 'notif';
     if (p.startsWith('/admin/jenjang')) return 'jenjang';
+        if (p.startsWith('/admin/pengurus')) return 'pengurus';
     if (p === '/admin/log') return 'log';
     return '';
   }
@@ -164,10 +167,11 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
   });
 
   // ---------- Query bersama ----------
-  async function daftarKegiatan(limit, where) {
+    async function daftarKegiatan(limit, where) {
     const r = await pool.query(`
       SELECT k.id, k.nama, to_char(k.tanggal::date, 'YYYY-MM-DD') AS tgl,
-             k.aktif, k.jam_buka, k.jam_tutup, k.batas_telat,
+             k.aktif, k.jam_buka, k.jam_tutup, k.batas_telat, k.target_jenjang,
+                target_label(k.target_jenjang) AS target_nama,
         (SELECT COUNT(*)::int FROM absensi a WHERE a.kegiatan_id = k.id AND a.status = 'Hadir') AS hadir,
         (SELECT COUNT(*)::int FROM absensi a WHERE a.kegiatan_id = k.id AND a.status = 'Izin') AS izin
       FROM kegiatan k ${where || ''}
@@ -211,8 +215,14 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
   }, 'Gagal memuat halaman absen.'));
 
   // ---------- KEGIATAN (daftar) ----------
-  app.get('/admin/kegiatan', requireAdmin, aman(async (req, res) => {
-    res.render('kegiatan_list', { list: await daftarKegiatan(100) });
+      app.get('/admin/kegiatan', requireAdmin, aman(async (req, res) => {
+    const [list, jen, ds, kls] = await Promise.all([
+      daftarKegiatan(100),
+      pool.query('SELECT * FROM jenjang ORDER BY umur_dari'),
+      pool.query('SELECT * FROM desa ORDER BY nama'),
+      pool.query('SELECT * FROM kelompok ORDER BY nama'),
+    ]);
+    res.render('kegiatan_list', { list, jenjang: jen.rows, desa: ds.rows, kelompok: kls.rows });
   }, 'Gagal memuat daftar kegiatan.'));
 
   // ---------- REKAP & MONITORING ----------
@@ -223,7 +233,7 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     return d.toISOString().slice(0, 10);
   };
 
-  async function hitungRekap(req) {
+    async function hitungRekap(req) {
     const sampai = tglOk(req.query.sampai) ? req.query.sampai : hariIniISO();
     let dari = tglOk(req.query.dari) ? req.query.dari : geser(sampai, -29);
     if (dari > sampai) dari = sampai;
@@ -234,9 +244,15 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     const prm = [desaId, kelompokId, dari, sampai, jenjangId];
 
     const [sesiR, orangR, desaR, kelR, jenR, jjR] = await Promise.all([
-      // Per kegiatan (hanya menghitung orang sesuai filter wilayah dan jenjang)
+      // Per kegiatan: sasaran = orang yang menjadi target kegiatan itu
       pool.query(`
         SELECT k.id, k.nama, to_char(k.tanggal::date, 'YYYY-MM-DD') AS tgl,
+                   target_label(k.target_jenjang) AS target_nama,
+          (SELECT COUNT(*) FROM mumi_aktif g2
+            JOIN kelompok kl2 ON kl2.id = g2.kelompok_id
+            WHERE ($1::int = 0 OR kl2.desa_id = $1::int) AND ($2::int = 0 OR kl2.id = $2::int)
+              AND ($5::int = 0 OR g2.jenjang_id = $5::int)
+              AND in_sasaran(k.target_jenjang, g2.jenjang_id, g2.id))::int AS sasaran,
           COUNT(a.id) FILTER (WHERE a.status = 'Hadir')::int AS hadir,
           COUNT(a.id) FILTER (WHERE a.status = 'Izin')::int AS izin
         FROM kegiatan k
@@ -251,24 +267,22 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
         WHERE k.tanggal::date BETWEEN $3::date AND $4::date
         GROUP BY k.id ORDER BY k.tanggal::date DESC, k.id DESC`, prm),
 
-      // Per orang
+      // Per orang: sesi = kegiatan yang menjadi sasarannya (atau yang dia hadiri)
       pool.query(`
         SELECT g.id, g.nama, d.nama AS desa, kl.nama AS kelompok,
+          COUNT(k.id) FILTER (WHERE in_sasaran(k.target_jenjang, g.jenjang_id, g.id) OR a.id IS NOT NULL)::int AS sesi,
           COUNT(a.id) FILTER (WHERE a.status = 'Hadir')::int AS hadir,
           COUNT(a.id) FILTER (WHERE a.status = 'Izin')::int AS izin
         FROM mumi_aktif g
         JOIN kelompok kl ON kl.id = g.kelompok_id
         JOIN desa d ON d.id = kl.desa_id
-        LEFT JOIN (
-          SELECT a.id, a.generus_id, a.status FROM absensi a
-          JOIN kegiatan k ON k.id = a.kegiatan_id
-          WHERE k.tanggal::date BETWEEN $3::date AND $4::date
-        ) a ON a.generus_id = g.id
+        LEFT JOIN kegiatan k ON k.tanggal::date BETWEEN $3::date AND $4::date
+        LEFT JOIN absensi a ON a.kegiatan_id = k.id AND a.generus_id = g.id
         WHERE ($1::int = 0 OR kl.desa_id = $1::int)
           AND ($2::int = 0 OR kl.id = $2::int)
           AND ($5::int = 0 OR g.jenjang_id = $5::int)
         GROUP BY g.id, g.nama, d.nama, kl.nama ORDER BY g.nama`, prm),
-        
+
       pool.query('SELECT * FROM desa ORDER BY nama'),
       pool.query('SELECT * FROM kelompok ORDER BY nama'),
       pool.query('SELECT * FROM jenjang ORDER BY umur_dari'),
@@ -277,16 +291,14 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
       pool.query(`
         SELECT COALESCE(j.nama, 'Belum ada data umur') AS label, j.umur_dari,
           COUNT(DISTINCT g.id)::int AS jumlah,
+          COUNT(k.id) FILTER (WHERE in_sasaran(k.target_jenjang, g.jenjang_id, g.id) OR a.id IS NOT NULL)::int AS sesi,
           COUNT(a.id) FILTER (WHERE a.status = 'Hadir')::int AS hadir,
           COUNT(a.id) FILTER (WHERE a.status = 'Izin')::int AS izin
         FROM mumi_aktif g
         JOIN kelompok kl ON kl.id = g.kelompok_id
         LEFT JOIN jenjang j ON j.id = g.jenjang_id
-        LEFT JOIN (
-          SELECT a.id, a.generus_id, a.status FROM absensi a
-          JOIN kegiatan k ON k.id = a.kegiatan_id
-          WHERE k.tanggal::date BETWEEN $3::date AND $4::date
-        ) a ON a.generus_id = g.id
+        LEFT JOIN kegiatan k ON k.tanggal::date BETWEEN $3::date AND $4::date
+        LEFT JOIN absensi a ON a.kegiatan_id = k.id AND a.generus_id = g.id
         WHERE ($1::int = 0 OR kl.desa_id = $1::int) AND ($2::int = 0 OR kl.id = $2::int)
         GROUP BY j.id, j.nama, j.umur_dari
         ORDER BY j.umur_dari NULLS LAST`, [desaId, kelompokId, dari, sampai]),
@@ -294,13 +306,13 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
 
     const eff = (h, i) => h + (izinHadir ? i : 0);
     const pct = (v, t) => t ? Math.min(100, Math.round(v * 100 / t)) : 0;
-    const n = orangR.rows.length;                      // jumlah mumi sesuai filter
+    const n = orangR.rows.length;
 
-    const sesi = sesiR.rows.map(r => Object.assign({}, r, { persen: pct(eff(r.hadir, r.izin), n) }));
+    const sesi = sesiR.rows.map(r => Object.assign({}, r, { persen: pct(eff(r.hadir, r.izin), r.sasaran) }));
     const nKeg = sesi.length;
     const sumH = sesi.reduce((a, r) => a + r.hadir, 0);
     const sumI = sesi.reduce((a, r) => a + r.izin, 0);
-    const slots = n * nKeg;
+    const slots = sesi.reduce((a, r) => a + r.sasaran, 0);
     const hadirEf = eff(sumH, sumI);
 
     // Tren harian
@@ -308,32 +320,32 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     sesi.forEach(s => {
       if (!perHari[s.tgl]) perHari[s.tgl] = { v: 0, t: 0 };
       perHari[s.tgl].v += eff(s.hadir, s.izin);
-      perHari[s.tgl].t += n;
+      perHari[s.tgl].t += s.sasaran;
     });
     const tren = Object.keys(perHari).sort()
       .map(t => ({ tgl: t, persen: pct(perHari[t].v, perHari[t].t) })).slice(-30);
 
     // Per orang
     const orang = orangR.rows.map(o => Object.assign({}, o, {
-      alpa: Math.max(nKeg - o.hadir - o.izin, 0),
-      persen: pct(eff(o.hadir, o.izin), nKeg),
+      alpa: Math.max(o.sesi - o.hadir - o.izin, 0),
+      persen: pct(eff(o.hadir, o.izin), o.sesi),
     })).sort((a, b) => b.persen - a.persen || a.nama.localeCompare(b.nama));
 
-    // Per wilayah: desa (semua daerah) atau kelompok (kalau desa/kelompok dipilih)
+    // Per wilayah
     const grupKel = !!(desaId || kelompokId);
     const mp = new Map();
     orang.forEach(o => {
       const key = grupKel ? o.kelompok : o.desa;
-      if (!mp.has(key)) mp.set(key, { label: key, jumlah: 0, hadir: 0, izin: 0 });
-      const w = mp.get(key); w.jumlah++; w.hadir += o.hadir; w.izin += o.izin;
+      if (!mp.has(key)) mp.set(key, { label: key, jumlah: 0, sesi: 0, hadir: 0, izin: 0 });
+      const w = mp.get(key); w.jumlah++; w.sesi += o.sesi; w.hadir += o.hadir; w.izin += o.izin;
     });
     const wilayah = [...mp.values()].map(w => Object.assign({}, w, {
-      persen: pct(eff(w.hadir, w.izin), w.jumlah * nKeg),
+      persen: pct(eff(w.hadir, w.izin), w.sesi),
     })).sort((a, b) => b.persen - a.persen);
 
     // Per jenjang
     const perJenjang = jjR.rows.map(r => Object.assign({}, r, {
-      persen: pct(eff(r.hadir, r.izin), r.jumlah * nKeg),
+      persen: pct(eff(r.hadir, r.izin), r.sesi),
     }));
 
     return {
@@ -404,6 +416,10 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
         SELECT g.id, g.nama, g.jenis_kelamin, g.no_hp, g.status_mumi, g.status_ket,
                d.nama AS desa, kl.nama AS kelompok,
                u.umur, COALESCE(jm.nama, ja.nama) AS jenjang
+                       , (SELECT string_agg(dp.nama, ', ') FROM dapukan dp
+                  WHERE dp.generus_id = g.id
+                    AND (dp.mulai IS NULL OR dp.mulai <= CURRENT_DATE)
+                    AND (dp.selesai IS NULL OR dp.selesai >= CURRENT_DATE)) AS dapukan
         FROM generus g
         JOIN kelompok kl ON kl.id = g.kelompok_id
         JOIN desa d ON d.id = kl.desa_id

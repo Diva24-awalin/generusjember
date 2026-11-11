@@ -66,6 +66,17 @@ const newToken = () => crypto.randomBytes(8).toString('hex');
 const requireAdmin = (req, res, next) =>
   req.session.admin ? next() : res.redirect('/admin/login');
 
+// Sasaran kegiatan: jenjang (mis. "1,2") atau pengurus (P, P:daerah, P:desa:5, P:kelompok:7)
+function buatTarget(b) {
+  if (b.jenis === 'pengurus') {
+    if (b.peng === 'daerah') return 'P:daerah';
+    if (b.peng === 'desa' && Number(b.peng_desa) > 0) return 'P:desa:' + Number(b.peng_desa);
+    if (b.peng === 'kelompok' && Number(b.peng_kel) > 0) return 'P:kelompok:' + Number(b.peng_kel);
+    return 'P';
+  }
+  return [].concat(b.target || []).map(Number).filter(n => n > 0).join(',') || null;
+}
+
 function nowWIB() {
   return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Jakarta' })
     .replace(' ', 'T').slice(0, 16);
@@ -95,8 +106,8 @@ require('./routes-baru')(app, pool, { requireAdmin, statusBuka });
 require('./routes-komunikasi')(app, pool, { requireAdmin });
 require('./routes-jenjang')(app, pool, { requireAdmin });
 require('./routes-perhatian')(app, pool, { requireAdmin });
-
-logAktivitas.halaman();                                                      // 2) SETELAH keduanya
+require('./routes-pengurus')(app, pool, { requireAdmin });
+logAktivitas.halaman();   
 
 // ---------- Halaman publik ----------
 app.get('/', (req, res) => res.render('index'));
@@ -174,24 +185,16 @@ app.get('/admin', requireAdmin, async (req, res) => {
 app.post('/admin/kegiatan', requireAdmin, async (req, res) => {
   try {
     const { nama, tanggal, jam_buka, jam_tutup, batas_telat } = req.body;
+        const target = buatTarget(req.body);
 
     const hasil = await pool.query(
       `INSERT INTO kegiatan
-       (nama, tanggal, token, jam_buka, jam_tutup, batas_telat)
-       VALUES ($1, $2, $3, $4, $5, $6)
+       (nama, tanggal, token, jam_buka, jam_tutup, batas_telat, target_jenjang)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [
-        nama,
-        tanggal,
-        newToken(),
-        jam_buka || null,
-        jam_tutup || null,
-        batas_telat || null
-      ]
+      [nama, tanggal, newToken(), jam_buka || null, jam_tutup || null, batas_telat || null, target]
     );
-
     res.redirect('/admin/kegiatan/' + hasil.rows[0].id);
-
   } catch (error) {
     console.error('Tambah kegiatan error:', error);
     res.status(500).send('Gagal menambahkan kegiatan.');
@@ -303,11 +306,9 @@ app.post('/admin/admin-baru', requireAdmin, async (req, res) => {
  // ---------- Detail kegiatan ----------
 app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
   try {
-    const hasilKegiatan = await pool.query(
-      'SELECT * FROM kegiatan WHERE id = $1',
-      [req.params.id]
-    );
-
+            const hasilKegiatan = await pool.query(`
+      SELECT k.*, target_label(k.target_jenjang) AS target_nama
+      FROM kegiatan k WHERE k.id = $1`, [req.params.id]);
     const k = hasilKegiatan.rows[0];
     if (!k) return res.redirect('/admin');
 
@@ -346,18 +347,20 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
       FROM mumi_aktif g
       JOIN kelompok kl ON kl.id = g.kelompok_id
       JOIN desa d ON d.id = kl.desa_id
-      WHERE NOT EXISTS (
+            WHERE NOT EXISTS (
         SELECT 1 FROM absensi a
         WHERE a.kegiatan_id = $1
           AND a.generus_id = g.id
       )
+      AND in_sasaran($2::text, g.jenjang_id, g.id)
       ORDER BY d.nama, kl.nama, g.nama
-    `, [k.id]);
+    `, [k.id, k.target_jenjang]);
 
     const belumList = hasilBelum.rows;
 
-    const hasilTotal = await pool.query(
-      'SELECT COUNT(*)::int AS c FROM mumi_aktif'
+       const hasilTotal = await pool.query(
+      'SELECT COUNT(*)::int AS c FROM mumi_aktif g WHERE in_sasaran($1::text, g.jenjang_id, g.id)',
+      [k.target_jenjang]
     );
     const total = hasilTotal.rows[0].c;
 
@@ -369,7 +372,7 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
       izin: rekap.filter(r => r.status === 'Izin').length,
       telat: rekap.filter(r => r.status === 'Hadir' && r.terlambat).length,
       belum: belumList.length,
-      persen: total ? Math.round(hadir * 100 / total) : 0,
+      persen: total ? Math.min(100, Math.round(hadir * 100 / total)) : 0,
     };
 
     const hasilPerDesa = await pool.query(`
@@ -380,13 +383,13 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
         COALESCE(SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END), 0)::int AS izin
       FROM desa d
       LEFT JOIN kelompok kl ON kl.desa_id = d.id
-      LEFT JOIN mumi_aktif g ON g.kelompok_id = kl.id
+      LEFT JOIN mumi_aktif g ON g.kelompok_id = kl.id AND in_sasaran($2::text, g.jenjang_id, g.id)
       LEFT JOIN absensi a
         ON a.generus_id = g.id
         AND a.kegiatan_id = $1
       GROUP BY d.id, d.nama
       ORDER BY d.nama
-    `, [k.id]);
+      `, [k.id, k.target_jenjang]);
 
     const perDesa = hasilPerDesa.rows;
 
@@ -399,13 +402,13 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
         COALESCE(SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END), 0)::int AS izin
       FROM kelompok kl
       JOIN desa d ON d.id = kl.desa_id
-      LEFT JOIN mumi_aktif g ON g.kelompok_id = kl.id
+      LEFT JOIN mumi_aktif g ON g.kelompok_id = kl.id AND in_sasaran($2::text, g.jenjang_id, g.id)
       LEFT JOIN absensi a
         ON a.generus_id = g.id
         AND a.kegiatan_id = $1
       GROUP BY kl.id, d.nama, kl.nama
       ORDER BY d.nama, kl.nama
-    `, [k.id]);
+        `, [k.id, k.target_jenjang]);
 
     const perKelompok = hasilPerKelompok.rows;
     
@@ -415,14 +418,15 @@ app.get('/admin/kegiatan/:id', requireAdmin, async (req, res) => {
         COUNT(g.id)::int AS total,
         COALESCE(SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END), 0)::int AS hadir,
         COALESCE(SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END), 0)::int AS izin
-      FROM mumi_aktif g
+            FROM mumi_aktif g
       LEFT JOIN jenjang j ON j.id = g.jenjang_id
       LEFT JOIN absensi a
         ON a.generus_id = g.id
         AND a.kegiatan_id = $1
+      WHERE in_sasaran($2::text, g.jenjang_id, g.id)
       GROUP BY j.id, j.nama, j.umur_dari
       ORDER BY j.umur_dari NULLS LAST
-    `, [k.id]);
+    `, [k.id, k.target_jenjang]);
 
     const perJenjang = hasilPerJenjang.rows;
 
@@ -554,15 +558,15 @@ app.post('/admin/kegiatan/:id/batal/:gid', requireAdmin, async (req, res) => {
 // ---------- Edit & Hapus Kegiatan ----------
 app.get('/admin/kegiatan/:id/edit', requireAdmin, async (req, res) => {
   try {
-    const hasil = await pool.query(
-      'SELECT * FROM kegiatan WHERE id = $1',
-      [req.params.id]
-    );
-
+        const [hasil, jen, ds, kls] = await Promise.all([
+      pool.query('SELECT * FROM kegiatan WHERE id = $1', [req.params.id]),
+      pool.query('SELECT * FROM jenjang ORDER BY umur_dari'),
+      pool.query('SELECT * FROM desa ORDER BY nama'),
+      pool.query('SELECT * FROM kelompok ORDER BY nama'),
+    ]);
     const k = hasil.rows[0];
     if (!k) return res.redirect('/admin');
-
-    res.render('kegiatan_edit', { k });
+    res.render('kegiatan_edit', { k, jenjang: jen.rows, desa: ds.rows, kelompok: kls.rows });
   } catch (error) {
     console.error('Edit kegiatan error:', error);
     res.status(500).send('Gagal memuat halaman edit kegiatan.');
@@ -572,23 +576,17 @@ app.get('/admin/kegiatan/:id/edit', requireAdmin, async (req, res) => {
 app.post('/admin/kegiatan/:id/edit', requireAdmin, async (req, res) => {
   try {
     const { nama, tanggal, jam_buka, jam_tutup, batas_telat } = req.body;
+       const target = buatTarget(req.body);
 
     if (nama && nama.trim() && tanggal) {
       await pool.query(`
         UPDATE kegiatan
         SET nama = $1, tanggal = $2, jam_buka = $3,
-            jam_tutup = $4, batas_telat = $5
-        WHERE id = $6
-      `, [
-        nama.trim(),
-        tanggal,
-        jam_buka || null,
-        jam_tutup || null,
-        batas_telat || null,
-        req.params.id
-      ]);
+            jam_tutup = $4, batas_telat = $5, target_jenjang = $6
+        WHERE id = $7
+      `, [nama.trim(), tanggal, jam_buka || null, jam_tutup || null,
+          batas_telat || null, target, req.params.id]);
     }
-
     res.redirect('/admin/kegiatan/' + req.params.id);
   } catch (error) {
     console.error('Simpan edit kegiatan error:', error);
@@ -676,8 +674,9 @@ app.get('/admin/kegiatan/:id/export', requireAdmin, async (req, res) => {
         WHERE a.kegiatan_id = $1
           AND a.generus_id = g.id
       )
+      AND in_sasaran($2::text, g.jenjang_id, g.id)
       ORDER BY d.nama, kl.nama, g.nama
-    `, [k.id]);
+    `, [k.id, k.target_jenjang]);
 
     const hadirRows = hasilHadir.rows;
     const belumRows = hasilBelum.rows;

@@ -10,7 +10,9 @@
     <input name="nama" value="<%= k.nama %>" required>
     <label>Tanggal</label>
     <input type="date" name="tanggal" value="<%= k.tanggal %>" required>
-
+        <label>Untuk siapa?</label>
+    <% const sel = String(k.target_jenjang || '').split(','); %>
+    <%- include('_target', { tgt: k.target_jenjang || '' }) %>
     <h2 style="margin-top:22px">Jadwal otomatis (opsional)</h2>
     <label>Dibuka otomatis pada (WIB)</label>
     <input type="datetime-local" name="jam_buka" value="<%= k.jam_buka || '' %>">

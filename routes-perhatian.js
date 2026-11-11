@@ -19,15 +19,16 @@ module.exports = function (app, pool, { requireAdmin }) {
   };
 
   // Hitung statistik tiap muda-mudi pada rentang tanggal
-  async function ambil(dari, sampai, desaId, kelompokId, izinHadir) {
-    const [orangR, barisR, lastR, desaR, kelR] = await Promise.all([
+    async function ambil(dari, sampai, desaId, kelompokId, izinHadir, jenjangId) {
+    const [orangR, barisR, lastR, desaR, kelR, jenR] = await Promise.all([
       pool.query(`
         SELECT g.id, g.nama, g.no_hp, d.nama AS desa, kl.nama AS kelompok
         FROM mumi_aktif g
         JOIN kelompok kl ON kl.id = g.kelompok_id
         JOIN desa d ON d.id = kl.desa_id
         WHERE ($1::int = 0 OR kl.desa_id = $1::int) AND ($2::int = 0 OR kl.id = $2::int)
-        ORDER BY g.nama`, [desaId, kelompokId]),
+          AND ($3::int = 0 OR g.jenjang_id = $3::int)
+        ORDER BY g.nama`, [desaId, kelompokId, jenjangId]),
       pool.query(`
         SELECT g.id AS gid, a.status
         FROM mumi_aktif g
@@ -35,16 +36,18 @@ module.exports = function (app, pool, { requireAdmin }) {
         JOIN kegiatan k ON k.tanggal::date BETWEEN $3::date AND $4::date
         LEFT JOIN absensi a ON a.kegiatan_id = k.id AND a.generus_id = g.id
         WHERE ($1::int = 0 OR kl.desa_id = $1::int) AND ($2::int = 0 OR kl.id = $2::int)
+          AND ($5::int = 0 OR g.jenjang_id = $5::int)
           AND (k.tanggal::date >= g.created_at::date OR a.id IS NOT NULL)
+          AND (in_sasaran(k.target_jenjang, g.jenjang_id, g.id) OR a.id IS NOT NULL)
         ORDER BY g.id, k.tanggal::date DESC, k.id DESC`,
-        [desaId, kelompokId, dari, sampai]),
+        [desaId, kelompokId, dari, sampai, jenjangId]),
       pool.query(`SELECT id FROM kegiatan WHERE tanggal::date BETWEEN $1::date AND $2::date
         ORDER BY tanggal::date DESC, id DESC LIMIT 1`, [dari, sampai]),
       pool.query('SELECT * FROM desa ORDER BY nama'),
       pool.query('SELECT * FROM kelompok ORDER BY nama'),
+      pool.query('SELECT * FROM jenjang ORDER BY umur_dari'),
     ]);
 
-    // barisR urut dari kegiatan terbaru ke terlama untuk tiap orang
     const st = new Map();
     barisR.rows.forEach(r => {
       if (!st.has(r.gid)) st.set(r.gid, { sesi: 0, h: 0, i: 0, th: 0, beruntun: 0, stop: false });
@@ -65,10 +68,11 @@ module.exports = function (app, pool, { requireAdmin }) {
     });
     return {
       orang, kegTerakhir: lastR.rows[0] ? lastR.rows[0].id : 0,
-      desaList: desaR.rows, kelList: kelR.rows,
+      desaList: desaR.rows, kelList: kelR.rows, jenjangList: jenR.rows,
       nKeg: Math.max(0, ...orang.map(o => o.sesi)),
       namaDesa: (desaR.rows.find(d => d.id === desaId) || {}).nama || '',
       namaKel: (kelR.rows.find(k => k.id === kelompokId) || {}).nama || '',
+      namaJenjang: (jenR.rows.find(j => j.id === jenjangId) || {}).nama || '',
     };
   }
 
@@ -83,8 +87,9 @@ module.exports = function (app, pool, { requireAdmin }) {
       kelompokId: Number(req.query.kelompok_id) || 0,
       izinHadir: req.query.izin === '1',
       ambang: angka(req.query.ambang, 60, 1, 100),
+      jenjangId: Number(req.query.jenjang_id) || 0,
     };
-    const d = await ambil(f.dari, f.sampai, f.desaId, f.kelompokId, f.izinHadir);
+    const d = await ambil(f.dari, f.sampai, f.desaId, f.kelompokId, f.izinHadir, f.jenjangId);
     d.orang.forEach(o => { o.rendah = o.sesi > 0 && o.persen < f.ambang; });
     d.orang.sort((a, b) => a.persen - b.persen || a.nama.localeCompare(b.nama));
     return Object.assign({ f }, d);
@@ -94,7 +99,7 @@ module.exports = function (app, pool, { requireAdmin }) {
     const d = await rekapGenerus(req);
     const qs = new URLSearchParams({
       dari: d.f.dari, sampai: d.f.sampai, desa_id: d.f.desaId,
-      kelompok_id: d.f.kelompokId, izin: d.f.izinHadir ? '1' : '0', ambang: d.f.ambang,
+      kelompok_id: d.f.kelompokId, izin: d.f.izinHadir ? '1' : '0', ambang: d.f.ambang, jenjang_id: d.f.jenjangId,
     }).toString();
     res.render('rekap_generus', Object.assign({ qs, rendahN: d.orang.filter(o => o.rendah).length }, d));
   }, 'Gagal memuat rekap generus.'));
@@ -122,10 +127,11 @@ module.exports = function (app, pool, { requireAdmin }) {
       beruntun: angka(req.query.beruntun, 3, 1, 20),
       desaId: Number(req.query.desa_id) || 0,
       kelompokId: Number(req.query.kelompok_id) || 0,
+      jenjangId: Number(req.query.jenjang_id) || 0,
     };
     const sampai = hariIniISO();
     const dari = geser(sampai, -(f.hari - 1));
-    const d = await ambil(dari, sampai, f.desaId, f.kelompokId, false);
+    const d = await ambil(dari, sampai, f.desaId, f.kelompokId, false, f.jenjangId);
 
     const daftar = d.orang
       .filter(o => o.sesi > 0)

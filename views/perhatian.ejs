@@ -8,7 +8,9 @@
 
   <div class="crumb">Semua Daerah
     <% if (namaDesa) { %> › <b><%= namaDesa %></b><% } %>
-    <% if (namaKel) { %> › <b><%= namaKel %></b><% } %></div>
+    <% if (namaKel) { %> › <b><%= namaKel %></b><% } %>
+    <% if (namaJenjang) { %> › <b><%= namaJenjang %></b><% } %>
+    </div>
 
   <form method="get" action="/admin/perlu-perhatian">
     <div class="mtools">
@@ -22,6 +24,11 @@
         <div><label style="margin-top:0">Ambang hadir (%)</label><input type="number" name="ambang" min="1" max="100" value="<%= f.ambang %>"></div>
         <div><label style="margin-top:0">Tidak hadir berturut</label><input type="number" name="beruntun" min="1" max="20" value="<%= f.beruntun %>"></div>
       </div>
+            <label>Jenjang</label>
+      <select name="jenjang_id">
+        <option value="0">Semua Jenjang</option>
+        <% jenjangList.forEach(j => { %><option value="<%= j.id %>" <%= Number(j.id) === f.jenjangId ? 'selected' : '' %>><%= j.nama %></option><% }) %>
+      </select>
       <label>Desa</label>
       <select name="desa_id" id="fDesa">
         <option value="0">Semua Desa</option>

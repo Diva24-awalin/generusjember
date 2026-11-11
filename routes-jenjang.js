@@ -18,6 +18,11 @@ module.exports = function (app, pool, { requireAdmin }) {
       INTEGER REFERENCES jenjang(id) ON DELETE SET NULL`);
     await pool.query(`ALTER TABLE generus ADD COLUMN IF NOT EXISTS status_mumi TEXT NOT NULL DEFAULT 'aktif'`);
     await pool.query(`ALTER TABLE generus ADD COLUMN IF NOT EXISTS status_ket TEXT`);
+    await pool.query(`ALTER TABLE kegiatan ADD COLUMN IF NOT EXISTS target_jenjang TEXT`);
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION in_target(t text, j integer) RETURNS boolean AS $$
+        SELECT t IS NULL OR t = '' OR (j IS NOT NULL AND j::text = ANY(string_to_array(t, ',')))
+      $$ LANGUAGE sql IMMUTABLE`);
     // View: hanya muda-mudi aktif, lengkap dengan umur dan jenjang hasil hitungan
     await pool.query('DROP VIEW IF EXISTS mumi_aktif');
     await pool.query(`CREATE VIEW mumi_aktif AS

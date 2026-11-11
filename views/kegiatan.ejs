@@ -5,6 +5,7 @@
   <a class="back no-print" href="/admin">Kembali</a>
   <h1><%= k.nama %></h1>
   <p class="muted"><%= k.tanggal %> ·
+      <% if (k.target_nama) { %><p><span class="badge izin">Khusus <%= k.target_nama %></span></p><% } %>
     <span class="badge <%= s.buka ? 'on' : 'off' %>">Absensi <%= s.label %></span></p>
       <p class="no-print actions">
     <a class="btn btn-line btn-sm" href="/admin/kegiatan/<%= k.id %>/edit">✎ Edit Kegiatan</a>

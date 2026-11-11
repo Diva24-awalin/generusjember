@@ -1,0 +1,61 @@
+<%
+  const T = String(typeof tgt === 'undefined' || tgt === null ? '' : tgt);
+  const isP = T.charAt(0) === 'P';
+  const pj = isP ? T.split(':') : [];
+  const pTingkat = !isP ? 'semua' : (T === 'P' ? 'semua' : pj[1]);
+  const pId = isP && pj[2] ? Number(pj[2]) : 0;
+  const selJ = isP ? [] : T.split(',');
+%>
+<label>Untuk siapa?</label>
+<select name="jenis" id="jenisTarget">
+  <option value="">Muda-mudi (semua atau jenjang tertentu)</option>
+  <option value="pengurus" <%= isP ? 'selected' : '' %>>Khusus Pengurus MUMIDA</option>
+</select>
+
+<div id="boxJenjang">
+  <div class="chips">
+    <% jenjang.forEach(j => { %>
+    <label class="chip" style="cursor:pointer"><input type="checkbox" name="target" value="<%= j.id %>" style="width:auto" <%= selJ.includes(String(j.id)) ? 'checked' : '' %>> <%= j.nama %></label>
+    <% }) %>
+  </div>
+  <p class="wahint">Kosongkan semua centang = untuk semua jenjang.</p>
+</div>
+
+<div id="boxPengurus" hidden>
+  <label>Pengurus tingkat</label>
+  <select name="peng" id="pengTingkat">
+    <option value="semua" <%= pTingkat === 'semua' ? 'selected' : '' %>>Semua pengurus</option>
+    <option value="daerah" <%= pTingkat === 'daerah' ? 'selected' : '' %>>Pengurus Daerah</option>
+    <option value="desa" <%= pTingkat === 'desa' ? 'selected' : '' %>>Pengurus Desa tertentu</option>
+    <option value="kelompok" <%= pTingkat === 'kelompok' ? 'selected' : '' %>>Pengurus Kelompok tertentu</option>
+  </select>
+  <div id="boxPDesa" hidden>
+    <label>Desa</label>
+    <select name="peng_desa">
+      <% desa.forEach(d => { %><option value="<%= d.id %>" <%= pTingkat === 'desa' && pId === Number(d.id) ? 'selected' : '' %>><%= d.nama %></option><% }) %>
+    </select>
+  </div>
+  <div id="boxPKel" hidden>
+    <label>Kelompok</label>
+    <select name="peng_kel">
+      <% kelompok.forEach(k => { const dn = (desa.find(d => Number(d.id) === Number(k.desa_id)) || {}).nama || ''; %>
+      <option value="<%= k.id %>" <%= pTingkat === 'kelompok' && pId === Number(k.id) ? 'selected' : '' %>><%= dn %> › <%= k.nama %></option>
+      <% }) %>
+    </select>
+  </div>
+  <p class="wahint">Yang dihitung hanya orang yang saat ini memegang dapukan di tingkat itu.</p>
+</div>
+
+<script>
+(function () {
+  var j = document.getElementById('jenisTarget'), t = document.getElementById('pengTingkat');
+  function a() {
+    var p = j.value === 'pengurus';
+    document.getElementById('boxJenjang').hidden = p;
+    document.getElementById('boxPengurus').hidden = !p;
+    document.getElementById('boxPDesa').hidden = !(p && t.value === 'desa');
+    document.getElementById('boxPKel').hidden = !(p && t.value === 'kelompok');
+  }
+  j.onchange = a; t.onchange = a; a();
+})();
+</script>

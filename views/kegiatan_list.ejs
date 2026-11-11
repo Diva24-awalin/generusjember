@@ -7,6 +7,7 @@
     <h2>Buat Kegiatan Baru</h2>
     <label>Nama Kegiatan</label><input name="nama" required placeholder="Contoh: Pengajian Muda-Mudi">
     <label>Tanggal</label><input type="date" name="tanggal" required>
+        <%- include('_target', { tgt: '' }) %>
     <details style="margin-top:14px">
       <summary>Atur jadwal otomatis (opsional)</summary>
       <label>Absensi dibuka otomatis pada</label><input type="datetime-local" name="jam_buka">
@@ -22,7 +23,7 @@
   <% list.forEach(k => { %>
   <div class="card">
     <div class="spread">
-      <div><b><%= k.nama %></b><br><small class="muted"><%= tglID(k.tgl) %> · Hadir <%= k.hadir %> · Izin <%= k.izin %></small></div>
+      <div><b><%= k.nama %></b><br><small class="muted"><%= tglID(k.tgl) %> · Hadir <%= k.hadir %> · Izin <%= k.izin %><% if (k.target_nama) { %> · <b>Khusus <%= k.target_nama %></b><% } %></small></div>
       <span class="badge <%= k.buka ? 'on' : 'off' %>"><%= k.label %></span>
     </div>
     <div class="actions" style="margin-top:12px">

@@ -1,0 +1,148 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pengurus MUMIDA - SIGJ</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap wide">
+  <p class="muted" style="margin-top:0">Orang yang memegang dapukan. Bisa dipakai sebagai sasaran kegiatan "Khusus Pengurus".</p>
+  <% if (ok) { %><p class="ok"><b><%= ok %></b></p><% } %>
+  <% if (err) { %><p class="err"><b><%= err %></b></p><% } %>
+
+  <details class="card" <%= err ? 'open' : '' %>>
+    <summary>+ Tambah Pengurus</summary>
+    <form method="post" action="/admin/pengurus">
+      <label>Cari nama muda-mudi</label>
+      <input id="cari" placeholder="Ketik minimal 2 huruf" autocomplete="off">
+      <input type="hidden" name="generus_id" id="gid">
+      <div class="hasil" id="hasil"></div>
+
+      <label>Dapukan</label>
+      <select name="nama">
+        <% refs.forEach(r => { %><option><%= r.nama %></option><% }) %>
+      </select>
+      <label>Tingkat</label>
+      <select name="tingkat" id="tingkat">
+        <option value="daerah">Daerah</option>
+        <option value="desa">Desa</option>
+        <option value="kelompok">Kelompok</option>
+      </select>
+      <div id="boxDesa" hidden>
+        <label>Desa</label>
+        <select name="desa_id"><% desa.forEach(d => { %><option value="<%= d.id %>"><%= d.nama %></option><% }) %></select>
+      </div>
+      <div id="boxKel" hidden>
+        <label>Kelompok</label>
+        <select name="kelompok_id">
+          <% kelompok.forEach(k => { const dn = (desa.find(d => Number(d.id) === Number(k.desa_id)) || {}).nama || ''; %>
+          <option value="<%= k.id %>"><%= dn %> › <%= k.nama %></option><% }) %>
+        </select>
+      </div>
+      <label>Mulai menjabat (opsional)</label>
+      <input type="date" name="mulai">
+      <p><button class="btn-block">Simpan</button></p>
+    </form>
+  </details>
+
+  <div class="tabs">
+    <a class="btn pilih btn-sm <%= tampil === 'aktif' ? 'on' : '' %>" style="flex:1" href="/admin/pengurus">Yang menjabat</a>
+    <a class="btn pilih btn-sm <%= tampil === 'semua' ? 'on' : '' %>" style="flex:1" href="/admin/pengurus?tampil=semua">Termasuk riwayat</a>
+  </div>
+
+  <% [['daerah', 'Tingkat Daerah'], ['desa', 'Tingkat Desa'], ['kelompok', 'Tingkat Kelompok']].forEach(([kode, judul]) => {
+       const arr = list.filter(x => x.tingkat === kode); %>
+  <h2 style="margin:18px 0 10px"><%= judul %> (<%= arr.length %>)</h2>
+  <% if (!arr.length) { %><div class="card muted">Belum ada pengurus.</div><% } %>
+  <% arr.forEach(p => {
+       const ini = p.nama.trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase(); %>
+  <div class="mrow">
+    <a class="mrow-main" href="/admin/generus/<%= p.gid %>">
+      <span class="avatar-sm"><%= ini %></span>
+      <span class="mrow-info">
+        <b><%= p.nama %></b>
+        <span class="tags">
+          <span class="tag jj"><%= p.dapukan %></span>
+          <% if (p.tingkat !== 'daerah') { %><span class="tag"><%= p.wilayah %></span><% } %>
+          <% if (!p.aktif) { %><span class="tag bad">Berakhir</span><% } %>
+        </span>
+        <small class="muted"><%= p.desa %> · <%= p.kelompok %><% if (p.mulai) { %> · sejak <%= tglID(p.mulai) %><% } %><% if (p.selesai) { %> · s.d. <%= tglID(p.selesai) %><% } %></small>
+      </span>
+    </a>
+    <div class="mrow-act">
+      <% if (p.aktif) { %>
+      <form method="post" action="/admin/pengurus/<%= p.id %>/akhiri"
+            onsubmit="return confirm('Akhiri masa jabatan ini? Riwayatnya tetap tersimpan.')">
+        <button class="btn-line btn-sm" style="width:100%">Akhiri</button>
+      </form>
+      <% } else { %>
+      <form method="post" action="/admin/pengurus/<%= p.id %>/aktif">
+        <button class="btn-line btn-sm" style="width:100%">Aktifkan</button>
+      </form>
+      <% } %>
+      <form method="post" action="/admin/pengurus/<%= p.id %>/hapus"
+            onsubmit="return confirm('Hapus dapukan ini beserta riwayatnya?')">
+        <button class="btn-danger btn-sm" style="width:100%">Hapus</button>
+      </form>
+    </div>
+  </div>
+  <% }) %>
+  <% }) %>
+
+  <div class="card">
+    <h2>Kehadiran Musyawarah Pengurus</h2>
+    <p class="muted" style="font-size:13px;margin-top:0">180 hari terakhir, dari kegiatan bersasaran "Khusus Pengurus".</p>
+    <% if (!rekap.length) { %><p class="muted">Belum ada kegiatan khusus pengurus.</p><% } %>
+    <% rekap.forEach(r => { %>
+    <div style="margin:12px 0">
+      <div class="spread" style="font-size:14px">
+        <b><%= r.nama %></b>
+        <span class="pct <%= r.persen >= 75 ? 'hi' : (r.persen >= 50 ? 'mid' : 'lo') %>"><%= r.persen %>%</span>
+      </div>
+      <div class="bar thin"><i class="c-hadir" style="width:<%= r.persen %>%"></i></div>
+      <small class="muted">Hadir <%= r.hadir %> · Izin <%= r.izin %> · dari <%= r.sesi %> musyawarah</small>
+    </div>
+    <% }) %>
+  </div>
+
+  <div class="card">
+    <h2>Daftar Dapukan</h2>
+    <p class="muted" style="font-size:13px;margin-top:0">Pilihan yang muncul saat menambah pengurus. Menghapus dari daftar tidak mengubah pengurus yang sudah ada.</p>
+    <div class="chips">
+      <% refs.forEach(r => { %>
+      <form class="chip" method="post" action="/admin/dapukan-ref/<%= r.id %>/hapus"
+            onsubmit="return confirm('Hapus dapukan ini dari daftar?')">
+        <span><%= r.nama %></span><button title="Hapus">×</button>
+      </form>
+      <% }) %>
+    </div>
+    <form method="post" action="/admin/dapukan-ref" style="margin-top:14px">
+      <label style="margin-top:0">Tambah dapukan baru</label>
+      <div class="row">
+        <input name="nama" maxlength="60" placeholder="Contoh: Koordinator Olahraga" required>
+        <button style="flex:none">Tambah</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+$('tingkat').onchange = function () {
+  $('boxDesa').hidden = this.value !== 'desa';
+  $('boxKel').hidden = this.value !== 'kelompok';
+};
+let t;
+$('cari').oninput = (e) => {
+  clearTimeout(t); $('gid').value = '';
+  t = setTimeout(async () => {
+    const r = await fetch('/admin/pengurus/cari?q=' + encodeURIComponent(e.target.value));
+    const rows = await r.json();
+    $('hasil').innerHTML = rows.map(g =>
+      `<div data-id="${g.id}"><b>${esc(g.nama)}</b><br><small class="muted">${esc(g.desa)} · ${esc(g.kelompok)}</small></div>`
+    ).join('') || '<p class="muted">Tidak ditemukan.</p>';
+  }, 300);
+};
+$('hasil').onclick = (e) => {
+  const d = e.target.closest('[data-id]'); if (!d) return;
+  document.querySelectorAll('.hasil div').forEach(x => x.classList.remove('on'));
+  d.classList.add('on'); $('gid').value = d.dataset.id;
+};
+</script></body></html>
