@@ -1107,21 +1107,20 @@ app.get('/absen/:token', async (req, res) => {
 app.get('/api/cari', async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
-
     if (q.length < 2) return res.json([]);
 
+    // Hanya boleh dipakai dari halaman absen yang QR-nya valid dan sedang dibuka
+    const k = await getKegiatan(String(req.query.t || ''));
+    if (!k || !statusBuka(k).buka) return res.json([]);
+
     const hasil = await pool.query(`
-      SELECT
-        g.id,
-        g.nama,
-        d.nama AS desa,
-        kl.nama AS kelompok
+      SELECT g.id, g.nama, d.nama AS desa, kl.nama AS kelompok
       FROM mumi_aktif g
       JOIN kelompok kl ON kl.id = g.kelompok_id
       JOIN desa d ON d.id = kl.desa_id
       WHERE g.nama ILIKE $1
       ORDER BY g.nama
-      LIMIT 15
+      LIMIT 10
     `, [`%${q}%`]);
 
     res.json(hasil.rows);

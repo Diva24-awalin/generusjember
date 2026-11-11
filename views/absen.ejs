@@ -84,7 +84,7 @@ let t;
 $('cari').oninput = (e) => {
   clearTimeout(t); $('gid').value = ''; cek();
   t = setTimeout(async () => {
-    const r = await fetch('/api/cari?q=' + encodeURIComponent(e.target.value));
+    const r = await fetch('/api/cari?t=<%= k.token %>&q=' + encodeURIComponent(e.target.value));
     const rows = await r.json();
     $('hasil').innerHTML = rows.map(g =>
       `<div data-id="${g.id}"><b>${esc(g.nama)}</b><br><small class="muted">${esc(g.desa)} · ${esc(g.kelompok)}</small></div>`
