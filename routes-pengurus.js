@@ -68,7 +68,7 @@ module.exports = function (app, pool, { requireAdmin }) {
   // ---------- Halaman utama ----------
   app.get('/admin/pengurus', requireAdmin, aman(async (req, res) => {
     await siap;
-    const tampil = req.query.tampil === 'semua' ? 'semua' : 'aktif';
+        const tampil = ['semua', 'riwayat'].includes(req.query.tampil) ? req.query.tampil : 'aktif';
     const [list, refs, desa, kelompok, rekap] = await Promise.all([
       pool.query(`
         SELECT d.id, d.nama AS dapukan, d.tingkat,
@@ -84,7 +84,9 @@ module.exports = function (app, pool, { requireAdmin }) {
         JOIN kelompok kl ON kl.id = g.kelompok_id
         JOIN desa de ON de.id = kl.desa_id
         LEFT JOIN dapukan_ref r ON r.nama = d.nama
-        WHERE $1::text = 'semua' OR (${AKTIF('d')})
+                WHERE $1::text = 'semua'
+           OR ($1::text = 'aktif' AND (${AKTIF('d')}))
+           OR ($1::text = 'riwayat' AND NOT (${AKTIF('d')}))
         ORDER BY CASE d.tingkat WHEN 'daerah' THEN 1 WHEN 'desa' THEN 2 ELSE 3 END,
                  COALESCE(r.urut, 999), g.nama`, [tampil]),
       pool.query('SELECT * FROM dapukan_ref ORDER BY urut, nama'),

@@ -41,9 +41,10 @@
     </form>
   </details>
 
-  <div class="tabs">
+    <div class="tabs">
     <a class="btn pilih btn-sm <%= tampil === 'aktif' ? 'on' : '' %>" style="flex:1" href="/admin/pengurus">Yang menjabat</a>
-    <a class="btn pilih btn-sm <%= tampil === 'semua' ? 'on' : '' %>" style="flex:1" href="/admin/pengurus?tampil=semua">Termasuk riwayat</a>
+    <a class="btn pilih btn-sm <%= tampil === 'riwayat' ? 'on' : '' %>" style="flex:1" href="/admin/pengurus?tampil=riwayat">Riwayat</a>
+    <a class="btn pilih btn-sm <%= tampil === 'semua' ? 'on' : '' %>" style="flex:1" href="/admin/pengurus?tampil=semua">Semua</a>
   </div>
 
     <% [['daerah', 'Tingkat Daerah'], ['desa', 'Tingkat Desa'], ['kelompok', 'Tingkat Kelompok']].forEach(([kode, judul]) => {
