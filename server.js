@@ -112,32 +112,45 @@ logAktivitas.halaman();
 // ---------- Halaman publik ----------
 app.get('/', (req, res) => res.render('index'));
 
-// ---------- Login admin (dibatasi 10 percobaan / 15 menit) ----------
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false,
-  handler: (req, res) => res.status(429).render('login',
-    { error: 'Terlalu banyak percobaan. Coba lagi 15 menit lagi.' }),
-});
+// ---------- Login admin (dibatasi 10 gagal / 15 menit, disimpan di database) ----------
+const loginSiap = pool.query(`
+  CREATE TABLE IF NOT EXISTS login_gagal (
+    id SERIAL PRIMARY KEY,
+    ip TEXT, email TEXT,
+    waktu TIMESTAMPTZ NOT NULL DEFAULT NOW())`)
+  .then(() => pool.query('CREATE INDEX IF NOT EXISTS idx_login_gagal_waktu ON login_gagal (waktu)'))
+  .catch(e => console.error('Gagal menyiapkan tabel login_gagal:', e.message));
 
 app.get('/admin/login', (req, res) => res.render('login', { error: null }));
-app.post('/admin/login', loginLimiter, async (req, res) => {
+
+app.post('/admin/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    await loginSiap;
+    const email = String(req.body.email || '').trim().toLowerCase().slice(0, 150);
+    const password = req.body.password || '';
+    const ip = req.ip || '';
 
-    const hasil = await pool.query(
-      'SELECT * FROM admin WHERE email = $1',
-      [email]
-    );
+    // Terlalu banyak gagal dalam 15 menit terakhir?
+    const c = await pool.query(`
+      SELECT COUNT(*)::int AS n FROM login_gagal
+      WHERE waktu > NOW() - INTERVAL '15 minutes' AND (ip = $1 OR email = $2)`, [ip, email]);
+    if (c.rows[0].n >= 10) {
+      return res.status(429).render('login',
+        { error: 'Terlalu banyak percobaan. Coba lagi 15 menit lagi.' });
+    }
 
+    const hasil = await pool.query('SELECT * FROM admin WHERE LOWER(email) = $1', [email]);
     const a = hasil.rows[0];
 
-    if (a && bcrypt.compareSync(password || '', a.password)) {
-      req.session.admin = { id: a.id, email: a.email };
+    if (a && bcrypt.compareSync(password, a.password)) {
+      await pool.query('DELETE FROM login_gagal WHERE ip = $1 OR email = $2', [ip, email]);
+      req.session.admin = { id: a.id, email: a.email, nama: a.nama || null };
       return res.redirect('/admin');
     }
 
-    res.render('login', { error: 'Email atau password salah.' });
-
+    await pool.query('INSERT INTO login_gagal (ip, email) VALUES ($1, $2)', [ip, email]);
+    pool.query(`DELETE FROM login_gagal WHERE waktu < NOW() - INTERVAL '1 day'`).catch(() => {});
+    res.status(401).render('login', { error: 'Email atau password salah.' });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).render('login', {
@@ -145,6 +158,7 @@ app.post('/admin/login', loginLimiter, async (req, res) => {
     });
   }
 });
+
 app.get('/admin/logout', (req, res) => req.session.destroy(() => res.redirect('/')));
 
 // ---------- Dashboard admin ----------
@@ -271,6 +285,7 @@ app.post('/admin/password', requireAdmin, async (req, res) => {
 app.post('/admin/admin-baru', requireAdmin, async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   const pw = req.body.password || '';
+  const nama = (req.body.nama || '').trim().slice(0, 60) || null;
 
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     return halamanPassword(req, res, 'Format email tidak valid.');
@@ -282,8 +297,8 @@ app.post('/admin/admin-baru', requireAdmin, async (req, res) => {
 
   try {
     await pool.query(
-      'INSERT INTO admin (email, password) VALUES ($1, $2)',
-      [email, bcrypt.hashSync(pw, 10)]
+      'INSERT INTO admin (email, password, nama) VALUES ($1, $2, $3)',
+      [email, bcrypt.hashSync(pw, 10), nama]
     );
 
     return halamanPassword(

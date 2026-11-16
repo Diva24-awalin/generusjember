@@ -10,6 +10,17 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
     catch (e) { console.error(pesan, e); res.status(500).send(pesan); }
   };
 
+    // Kolom nama untuk akun admin (dibuat otomatis kalau belum ada)
+  pool.query('ALTER TABLE admin ADD COLUMN IF NOT EXISTS nama TEXT')
+    .catch(e => console.error('Gagal menambah kolom nama:', e.message));
+      // Nama tampilan: nama asli, atau cadangan dari bagian depan email
+  const namaTampil = (a) => {
+    if (a && a.nama && a.nama.trim()) return a.nama.trim();
+    const depan = String((a && a.email) || 'Pengurus').split('@')[0];
+    return depan.replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  };
+  app.locals.namaTampil = namaTampil;
+
   // ---------- Ikon & helper tampilan ----------
   const P = {
     home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
@@ -185,7 +196,7 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
 
   // ---------- BERANDA ----------
   app.get('/admin', requireAdmin, aman(async (req, res) => {
-    const [g, d, kl, hariIni, terbaru, tigaPuluh] = await Promise.all([
+    const [g, d, kl, hariIni, terbaru, tigaPuluh, me] = await Promise.all([
       pool.query('SELECT COUNT(*)::int AS c FROM mumi_aktif'),
       pool.query('SELECT COUNT(*)::int AS c FROM desa'),
       pool.query('SELECT COUNT(*)::int AS c FROM kelompok'),
@@ -195,13 +206,15 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
         FROM kegiatan k LEFT JOIN absensi a ON a.kegiatan_id = k.id
         WHERE k.tanggal::date >= (NOW() AT TIME ZONE 'Asia/Jakarta')::date - 30
         GROUP BY k.id`),
+      pool.query('SELECT email, nama FROM admin WHERE id = $1', [req.session.admin.id]),
     ]);
     const total = g.rows[0].c;
     const n = tigaPuluh.rows.length;
     const sum = tigaPuluh.rows.reduce((a, r) => a + r.hadir, 0);
     const persen30 = n && total ? Math.min(100, Math.round(sum * 100 / (n * total))) : 0;
     res.render('beranda', {
-      admin: req.session.admin, total, desaN: d.rows[0].c, kelompokN: kl.rows[0].c,
+      admin: req.session.admin, nama: namaTampil(me.rows[0] || req.session.admin),
+      total, desaN: d.rows[0].c, kelompokN: kl.rows[0].c,
       persen30, hariIni, terbaru,
       tanggalHariIni: new Date().toLocaleDateString('id-ID',
         { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }),
@@ -496,10 +509,24 @@ module.exports = function (app, pool, { requireAdmin, statusBuka }) {
   }, 'Gagal menyimpan muda-mudi.'));
 
   // ---------- PROFIL ----------
-  app.get('/admin/profil', requireAdmin, aman(async (req, res) => {
-    const n = (await pool.query('SELECT COUNT(*)::int AS c FROM admin')).rows[0].c;
-    res.render('profil', { admin: req.session.admin, jumlahAdmin: n });
+    app.get('/admin/profil', requireAdmin, aman(async (req, res) => {
+    const [n, me] = await Promise.all([
+      pool.query('SELECT COUNT(*)::int AS c FROM admin'),
+      pool.query('SELECT email, nama FROM admin WHERE id = $1', [req.session.admin.id]),
+    ]);
+    const a = me.rows[0] || req.session.admin;
+    res.render('profil', {
+      admin: req.session.admin, jumlahAdmin: n.rows[0].c,
+      nama: namaTampil(a), namaAsli: a.nama || '', ok: req.query.ok === '1',
+    });
   }, 'Gagal memuat profil.'));
+
+  app.post('/admin/profil', requireAdmin, aman(async (req, res) => {
+    const nama = (req.body.nama || '').trim().slice(0, 60) || null;
+    await pool.query('UPDATE admin SET nama = $1 WHERE id = $2', [nama, req.session.admin.id]);
+    req.session.admin.nama = nama;
+    res.redirect('/admin/profil?ok=1');
+  }, 'Gagal menyimpan nama.'));
 
   // ---------- JURNAL (upload materi) ----------
   const ensureJurnal = pool.query(`

@@ -46,45 +46,55 @@
     <a class="btn pilih btn-sm <%= tampil === 'semua' ? 'on' : '' %>" style="flex:1" href="/admin/pengurus?tampil=semua">Termasuk riwayat</a>
   </div>
 
-  <% [['daerah', 'Tingkat Daerah'], ['desa', 'Tingkat Desa'], ['kelompok', 'Tingkat Kelompok']].forEach(([kode, judul]) => {
-       const arr = list.filter(x => x.tingkat === kode); %>
-  <h2 style="margin:18px 0 10px"><%= judul %> (<%= arr.length %>)</h2>
-  <% if (!arr.length) { %><div class="card muted">Belum ada pengurus.</div><% } %>
-  <% arr.forEach(p => {
+    <% [['daerah', 'Tingkat Daerah'], ['desa', 'Tingkat Desa'], ['kelompok', 'Tingkat Kelompok']].forEach(([kode, judul]) => {
+       const arr = list.filter(x => x.tingkat === kode);
+       const grup = [], idx = {};
+       arr.forEach(p => {
+         const key = p.gid + '|' + p.wilayah;
+         if (idx[key] === undefined) { idx[key] = grup.length; grup.push({ p, items: [] }); }
+         grup[idx[key]].items.push(p);
+       }); %>
+  <h2 style="margin:18px 0 10px"><%= judul %> (<%= grup.length %> orang)</h2>
+  <% if (!grup.length) { %><div class="card muted">Belum ada pengurus.</div><% } %>
+  <% grup.forEach(gr => {
+       const p = gr.p;
        const ini = p.nama.trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase(); %>
-  <div class="mrow">
-    <a class="mrow-main" href="/admin/generus/<%= p.gid %>">
+  <div class="card" style="padding:14px">
+    <a class="mrow-main" href="/admin/generus/<%= p.gid %>" style="text-decoration:none;color:inherit">
       <span class="avatar-sm"><%= ini %></span>
       <span class="mrow-info">
         <b><%= p.nama %></b>
-        <span class="tags">
-          <span class="tag jj"><%= p.dapukan %></span>
-          <% if (p.tingkat !== 'daerah') { %><span class="tag"><%= p.wilayah %></span><% } %>
-          <% if (!p.aktif) { %><span class="tag bad">Berakhir</span><% } %>
-        </span>
-        <small class="muted"><%= p.desa %> · <%= p.kelompok %><% if (p.mulai) { %> · sejak <%= tglID(p.mulai) %><% } %><% if (p.selesai) { %> · s.d. <%= tglID(p.selesai) %><% } %></small>
+        <small class="muted"><%= p.desa %> · <%= p.kelompok %><% if (p.tingkat !== 'daerah') { %> · <%= p.wilayah %><% } %></small>
       </span>
     </a>
-    <div class="mrow-act">
-      <% if (p.aktif) { %>
-      <form method="post" action="/admin/pengurus/<%= p.id %>/akhiri"
-            onsubmit="return confirm('Akhiri masa jabatan ini? Riwayatnya tetap tersimpan.')">
-        <button class="btn-line btn-sm" style="width:100%">Akhiri</button>
-      </form>
-      <% } else { %>
-      <form method="post" action="/admin/pengurus/<%= p.id %>/aktif">
-        <button class="btn-line btn-sm" style="width:100%">Aktifkan</button>
-      </form>
-      <% } %>
-      <form method="post" action="/admin/pengurus/<%= p.id %>/hapus"
-            onsubmit="return confirm('Hapus dapukan ini beserta riwayatnya?')">
-        <button class="btn-danger btn-sm" style="width:100%">Hapus</button>
-      </form>
+    <% gr.items.forEach(x => { %>
+    <div class="spread" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <span>
+        <span class="tag jj"><%= x.dapukan %></span>
+        <% if (!x.aktif) { %><span class="tag bad">Berakhir</span><% } %>
+        <% if (x.mulai || x.selesai) { %><br><small class="muted"><% if (x.mulai) { %>sejak <%= tglID(x.mulai) %><% } %><% if (x.selesai) { %> · s.d. <%= tglID(x.selesai) %><% } %></small><% } %>
+      </span>
+      <div class="actions">
+        <% if (x.aktif) { %>
+        <form class="inline" method="post" action="/admin/pengurus/<%= x.id %>/akhiri"
+              onsubmit="return confirm('Akhiri masa jabatan ini? Riwayatnya tetap tersimpan.')">
+          <button class="btn-line btn-sm">Akhiri</button>
+        </form>
+        <% } else { %>
+        <form class="inline" method="post" action="/admin/pengurus/<%= x.id %>/aktif">
+          <button class="btn-line btn-sm">Aktifkan</button>
+        </form>
+        <% } %>
+        <form class="inline" method="post" action="/admin/pengurus/<%= x.id %>/hapus"
+              onsubmit="return confirm('Hapus dapukan ini beserta riwayatnya?')">
+          <button class="btn-danger btn-sm">Hapus</button>
+        </form>
+      </div>
     </div>
+    <% }) %>
   </div>
   <% }) %>
   <% }) %>
-
   <div class="card">
     <h2>Kehadiran Musyawarah Pengurus</h2>
     <p class="muted" style="font-size:13px;margin-top:0">180 hari terakhir, dari kegiatan bersasaran "Khusus Pengurus".</p>
